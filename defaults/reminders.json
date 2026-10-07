@@ -1,0 +1,22 @@
+[
+  {
+    "id": "water",
+    "text": "Hey genius, your body is 60% water and 0% water right now. Fix that! 💧",
+    "everyMinutes": 45,
+    "between": ["09:00", "20:00"],
+    "days": [1, 2, 3, 4, 5]
+  },
+  {
+    "id": "standup",
+    "text": "Stand-up in 5 mins! Time to pretend you were productive all morning. 🎭",
+    "at": ["11:55", "13:25"],
+    "days": [1, 2, 3, 4, 5]
+  },
+  {
+    "id": "stretch",
+    "text": "Your spine called. It's filing a complaint. Stand up and stretch already! 🦴",
+    "everyMinutes": 30,
+    "between": ["09:00", "20:00"],
+    "days": [1, 2, 3, 4, 5]
+  }
+]

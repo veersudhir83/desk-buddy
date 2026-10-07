@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Electron binary archives (downloaded by electron build tools, not needed in repo)
+electron-*.zip
+*.zip
+
+# Auto-generated version file (written by electron-builder / npm lifecycle)
+version
+
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/settings.json
+
+# Runtime user data (lives in %APPDATA%, not in repo)
+userData/
+
+# Scratch / debug files
+test-app.js

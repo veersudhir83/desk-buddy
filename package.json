@@ -1,0 +1,41 @@
+{
+  "name": "desk-buddy",
+  "productName": "Desk Buddy",
+  "version": "0.1.0",
+  "description": "3D desktop companion that walks in with reminders (Windows, Electron + three.js)",
+  "main": "main.js",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "cmd /c \"set ELECTRON_RUN_AS_NODE=&& electron .\"",
+    "demo": "cmd /c \"set ELECTRON_RUN_AS_NODE=&& electron . --demo\"",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder --win nsis"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "electron": "^44.6.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.example.deskbuddy",
+    "productName": "Desk Buddy",
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**",
+      "renderer/**",
+      "assets/**",
+      "defaults/**",
+      "node_modules/three/build/**",
+      "node_modules/three/examples/jsm/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    }
+  }
+}
