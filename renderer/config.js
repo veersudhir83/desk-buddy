@@ -28,6 +28,7 @@ export const CONFIG = {
   terminalBot: { kind: 'terminalBot', height: 210, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
   nightOwl:    { kind: 'nightOwl',    height: 175, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
   pythonSnake: { kind: 'pythonSnake', height: 140, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
+  monkey:      { kind: 'monkey',      height: 200, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
 
   // Which character is active — persisted via userData/state.json (written by tray menu).
   activeCharacter: 'roboDog'

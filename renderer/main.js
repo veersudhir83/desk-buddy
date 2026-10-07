@@ -30,7 +30,7 @@ function resize() {
 // ---- Character management ----
 // lead  = the active reminder character; chase = cat (only with mouse)
 const [mouse, cat, roboDog, penguin, astronaut,
-       rubberDuck, coffeeCup, debugBug, terminalBot, nightOwl, pythonSnake] =
+       rubberDuck, coffeeCup, debugBug, terminalBot, nightOwl, pythonSnake, monkey] =
   await Promise.all([
     createCharacter(CONFIG.mouse),
     createCharacter(CONFIG.cat),
@@ -43,12 +43,13 @@ const [mouse, cat, roboDog, penguin, astronaut,
     createCharacter(CONFIG.terminalBot),
     createCharacter(CONFIG.nightOwl),
     createCharacter(CONFIG.pythonSnake),
+    createCharacter(CONFIG.monkey),
   ]);
 
 // Map of id → character object for quick lookup
 const CHAR_MAP = {
   mouse, roboDog, penguin, astronaut,
-  rubberDuck, coffeeCup, debugBug, terminalBot, nightOwl, pythonSnake
+  rubberDuck, coffeeCup, debugBug, terminalBot, nightOwl, pythonSnake, monkey
 };
 
 for (const ch of Object.values(CHAR_MAP)) ch.object.visible = false;

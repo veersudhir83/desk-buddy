@@ -1470,6 +1470,305 @@ function buildPythonSnake(cfg) {
 }
 
 // ---------------------------------------------------------------------------
+// Monkey — grinning chimp with huge teeth, big round ears, long arms, curling tail
+//
+// Orientation: SIDE-PROFILE (+X = forward/walking). The head faces +X so YAW
+// presents the massive grin straight at the viewer.
+//
+// Shape language: oversized cartoon proportions — round skull, wide flat muzzle,
+//   enormous toothy grin, plate-like ears on ±Z sides, fluffy brown fur.
+//   Arms reach the ground for a knuckle-walk. Long segmented tail curls up.
+// ---------------------------------------------------------------------------
+function buildMonkey(cfg) {
+  const C_FUR      = 0x8b6914; // warm brown fur
+  const C_FUR2     = 0xa07820; // lighter highlight fur
+  const C_BELLY    = 0xd4aa70; // pale belly / face centre
+  const C_SKIN     = 0xd4906a; // bare skin — ears, palms, muzzle
+  const C_MUZZLE   = 0xe0b08a; // lighter muzzle dome
+  const C_EYE_W    = 0xffffff;
+  const C_EYE      = 0x5c3a10; // brown iris
+  const C_PUPIL    = 0x111111;
+  const C_TOOTH    = 0xf8f0d0; // slightly off-white teeth
+  const C_GUM      = 0xd47070; // pink gums / inner mouth
+  const C_DARK     = 0x3a2008; // nostril / brow shadow
+  const C_TAIL     = 0x8b6914; // tail same as fur
+
+  const root = new THREE.Group();
+  const rig  = new THREE.Group();
+  root.add(rig);
+
+  // ── BODY ─────────────────────────────────────────────────────────────────
+  const body = new THREE.Group();
+  body.position.set(0, 0.55, 0);
+  rig.add(body);
+
+  // Barrel torso
+  body.add(mesh(SPHERE, C_FUR,   [0,  0.02, 0],    [0.38, 0.45, 0.34])); // back/torso
+  body.add(mesh(SPHERE, C_BELLY, [0, -0.04, 0.18], [0.26, 0.36, 0.18])); // pale belly patch
+  // Shoulder humps
+  for (const sx of [-1, 1]) {
+    body.add(mesh(SPHERE, C_FUR2, [0, 0.20, sx * 0.28], [0.20, 0.18, 0.16])); // shoulder hump
+  }
+
+  // ── NECK ──────────────────────────────────────────────────────────────────
+  const neck = new THREE.Group();
+  neck.position.set(0, 0.40, 0.10);
+  neck.rotation.x = -0.25;
+  body.add(neck);
+  neck.add(mesh(SPHERE, C_FUR, [0, 0.10, 0], [0.18, 0.18, 0.18]));
+
+  // ── HEAD — huge, round, forward-facing +X after YAW ───────────────────────
+  const head = new THREE.Group();
+  head.position.set(0, 0.48, 0.22);
+  body.add(head);
+
+  // Big round skull
+  head.add(mesh(SPHERE, C_FUR,   [0,  0.08,  0],    [0.46, 0.44, 0.44])); // skull dome
+  head.add(mesh(SPHERE, C_FUR2,  [0,  0.22, -0.04], [0.30, 0.14, 0.30])); // top fur tuft
+
+  // Face disc (flatter, lighter skin area in front +Z of head group →
+  // after YAW this becomes the viewer-facing +X)
+  head.add(mesh(SPHERE, C_BELLY, [0,  0.02,  0.32], [0.30, 0.34, 0.18])); // face disc
+
+  // ── MUZZLE — wide protruding dome with big grin ───────────────────────────
+  const muzzle = new THREE.Group();
+  muzzle.position.set(0, -0.06, 0.38);
+  head.add(muzzle);
+
+  muzzle.add(mesh(SPHERE, C_MUZZLE, [0,  0.04, 0.06], [0.28, 0.18, 0.18])); // upper muzzle
+  muzzle.add(mesh(SPHERE, C_MUZZLE, [0, -0.08, 0.06], [0.30, 0.12, 0.16])); // lower jaw dome
+  // Nostrils
+  muzzle.add(mesh(SPHERE, C_DARK, [-0.06, 0.04, 0.16], [0.040, 0.030, 0.025]));
+  muzzle.add(mesh(SPHERE, C_DARK, [ 0.06, 0.04, 0.16], [0.040, 0.030, 0.025]));
+
+  // ── GRIN — inner mouth + row of teeth ─────────────────────────────────────
+  // Inner mouth cavity
+  muzzle.add(mesh(SPHERE, C_GUM, [0, -0.04, 0.14], [0.24, 0.08, 0.12])); // gum base
+
+  // Upper teeth row (5 teeth, evenly spaced in Z axis = left-right when viewed after YAW)
+  const upperTeeth = new THREE.Group();
+  upperTeeth.position.set(0, 0.01, 0.14);
+  muzzle.add(upperTeeth);
+  for (let i = -2; i <= 2; i++) {
+    upperTeeth.add(mesh(SPHERE, C_TOOTH,
+      [0, 0, i * 0.048],
+      [0.038, 0.055, 0.036]));
+  }
+
+  // Lower teeth row
+  const lowerTeeth = new THREE.Group();
+  lowerTeeth.position.set(0, -0.07, 0.14);
+  muzzle.add(lowerTeeth);
+  for (let i = -2; i <= 2; i++) {
+    lowerTeeth.add(mesh(SPHERE, C_TOOTH,
+      [0, 0, i * 0.048],
+      [0.034, 0.046, 0.030]));
+  }
+
+  // Cheek puff spheres (big smile cheeks)
+  for (const sz of [-1, 1]) {
+    head.add(mesh(SPHERE, C_SKIN, [0, -0.02, sz * 0.28], [0.12, 0.10, 0.10]));
+  }
+
+  // ── EYES ──────────────────────────────────────────────────────────────────
+  for (const sz of [-1, 1]) {
+    head.add(mesh(SPHERE, C_EYE_W, [0,  0.14, sz * 0.18], [0.095, 0.095, 0.060]));
+    head.add(mesh(SPHERE, C_EYE,   [0,  0.14, sz * 0.19], [0.062, 0.068, 0.048]));
+    head.add(mesh(SPHERE, C_PUPIL, [0,  0.14, sz * 0.196],[0.028, 0.032, 0.022]));
+    head.add(mesh(SPHERE, 0xffffff,[0,  0.165,sz * 0.204],[0.014, 0.014, 0.010])); // sparkle
+    // Brow ridge
+    head.add(mesh(SPHERE, C_DARK,  [0.04, 0.22, sz * 0.16],[0.08, 0.030, 0.070]));
+  }
+
+  // ── EARS — big round plates on ±Z sides ──────────────────────────────────
+  for (const sz of [-1, 1]) {
+    const ear = new THREE.Group();
+    ear.position.set(0, 0.12, sz * 0.42);
+    head.add(ear);
+    ear.add(mesh(SPHERE, C_FUR,  [0, 0, 0],     [0.18, 0.22, 0.06])); // outer ear
+    ear.add(mesh(SPHERE, C_SKIN, [0, 0, sz*0.04],[0.13, 0.16, 0.04])); // inner skin
+  }
+
+  // ── ARMS — long, reaching the ground for knuckle-walk ────────────────────
+  const arms = [];
+  for (const lx of [-1, 1]) {
+    // Front arm (+X) and rear arm (-X) to match side-profile
+    const shoulder = new THREE.Group();
+    shoulder.position.set(lx * 0.22, 0.08, 0);
+    body.add(shoulder);
+    shoulder.add(mesh(SPHERE, C_FUR, [0, 0, 0], [0.14, 0.14, 0.14])); // shoulder ball
+
+    const upper = new THREE.Group();
+    shoulder.add(upper);
+    upper.add(mesh(SPHERE, C_FUR, [0, -0.18, 0], [0.11, 0.32, 0.11])); // upper arm
+
+    const elbow = new THREE.Group();
+    elbow.position.set(0, -0.34, 0);
+    upper.add(elbow);
+    elbow.add(mesh(SPHERE, C_FUR, [0, 0, 0], [0.10, 0.10, 0.10]));
+
+    const forearm = new THREE.Group();
+    forearm.rotation.x = 0.5; // bent forward
+    elbow.add(forearm);
+    forearm.add(mesh(SPHERE, C_FUR, [0, -0.18, 0], [0.09, 0.32, 0.09]));
+
+    const hand = new THREE.Group();
+    hand.position.set(0, -0.34, 0);
+    forearm.add(hand);
+    hand.add(mesh(SPHERE, C_SKIN, [0, -0.04, 0.04], [0.12, 0.08, 0.14])); // palm
+    // Fingers — 3 short knuckles pointing down/forward
+    for (let f = -1; f <= 1; f++) {
+      hand.add(mesh(SPHERE, C_SKIN, [0, -0.09, f * 0.046], [0.038, 0.070, 0.036]));
+    }
+
+    arms.push({ shoulder, upper, forearm, lx, phase: lx > 0 ? 0 : Math.PI });
+  }
+
+  // ── LEGS — shorter, bow-legged ────────────────────────────────────────────
+  const legs = [];
+  for (const lx of [-1, 1]) {
+    const hip = new THREE.Group();
+    hip.position.set(lx * 0.16, -0.32, 0);
+    body.add(hip);
+    hip.add(mesh(SPHERE, C_FUR, [0, 0, 0], [0.12, 0.12, 0.12]));
+
+    const upper = new THREE.Group();
+    upper.rotation.z = lx * 0.20; // bow-legged splay
+    hip.add(upper);
+    upper.add(mesh(SPHERE, C_FUR, [0, -0.14, 0], [0.10, 0.26, 0.10]));
+
+    const knee = new THREE.Group();
+    knee.position.set(0, -0.28, 0);
+    upper.add(knee);
+    const lower = new THREE.Group();
+    lower.rotation.x = 0.30; // knee bent
+    knee.add(lower);
+    lower.add(mesh(SPHERE, C_FUR, [0, -0.12, 0], [0.08, 0.22, 0.08]));
+
+    const foot = new THREE.Group();
+    foot.position.set(0, -0.24, 0.04);
+    lower.add(foot);
+    foot.add(mesh(SPHERE, C_SKIN, [0, -0.04, 0.04], [0.12, 0.07, 0.16])); // sole
+    foot.add(mesh(SPHERE, C_SKIN, [0, -0.04, 0.14], [0.06, 0.05, 0.05])); // big toe
+
+    legs.push({ hip, upper, lower, foot, lx, phase: lx > 0 ? 0 : Math.PI });
+  }
+
+  // ── TAIL — long, 4-segment curl ───────────────────────────────────────────
+  const tailRoot = new THREE.Group();
+  tailRoot.position.set(0, 0.10, -0.36);
+  tailRoot.rotation.x = -0.6;
+  body.add(tailRoot);
+
+  const tailSegs = [];
+  let parent = tailRoot;
+  const segData = [
+    { len: 0.28, r: 0.07, rx: -0.55 },
+    { len: 0.24, r: 0.060, rx: -0.50 },
+    { len: 0.20, r: 0.048, rx: -0.60 },
+    { len: 0.15, r: 0.034, rx: -0.70 },
+  ];
+  for (const sd of segData) {
+    const seg = new THREE.Group();
+    seg.rotation.x = sd.rx;
+    parent.add(seg);
+    seg.add(mesh(SPHERE, C_TAIL, [0, sd.len / 2, 0], [sd.r, sd.len, sd.r]));
+    seg.add(mesh(SPHERE, C_FUR2, [0, sd.len, 0], [sd.r * 1.2, sd.r * 1.2, sd.r * 1.2]));
+    tailSegs.push(seg);
+    const pivot = new THREE.Group();
+    pivot.position.set(0, sd.len, 0);
+    seg.add(pivot);
+    parent = pivot;
+  }
+
+  // ── SCALE ──────────────────────────────────────────────────────────────────
+  const box3 = new THREE.Box3().setFromObject(root);
+  root.scale.setScalar(cfg.height / (box3.max.y - box3.min.y));
+
+  // ── ANIMATION ─────────────────────────────────────────────────────────────
+  let t = 0; let anim = 'idle'; let hop = 0;
+
+  return {
+    object: root,
+    play(name) { anim = name; },
+    poke()     { hop = 0.50; },
+    update(dt) {
+      t += dt;
+      const walking = anim === 'walk';
+      const talking = anim === 'talk';
+      const k = Math.min(1, dt * 9);
+      const freq = walking ? 7.0 : 1.8;
+
+      // ── Arm swing (knuckle-walk — big arcs) ───────────────────────────────
+      for (const arm of arms) {
+        const s = Math.sin(t * freq + arm.phase);
+        const shoulderTarget = walking
+          ? s * 0.70                          // large fore-aft swing
+          : Math.sin(t * 1.4 + arm.phase * 0.3) * 0.06;
+        arm.shoulder.rotation.x += (shoulderTarget - arm.shoulder.rotation.x) * k;
+
+        const forearmTarget = walking
+          ? 0.40 + Math.max(0, s) * 0.55     // bend more on back-swing
+          : 0.50;
+        arm.forearm.rotation.x += (forearmTarget - arm.forearm.rotation.x) * k;
+      }
+
+      // ── Legs (short, bow, bounce) ─────────────────────────────────────────
+      for (const leg of legs) {
+        const s = Math.sin(t * freq + leg.phase);
+        if (walking) {
+          leg.upper.rotation.x += (s * 0.50 - leg.upper.rotation.x) * k;
+          leg.lower.rotation.x += ((0.30 + Math.max(0, s) * 0.25) - leg.lower.rotation.x) * k;
+        } else {
+          leg.upper.rotation.x += (0    - leg.upper.rotation.x) * k;
+          leg.lower.rotation.x += (0.30 - leg.lower.rotation.x) * k;
+        }
+      }
+
+      // ── Body bounce (exaggerated knuckle-walk) ────────────────────────────
+      let yOff = walking
+        ? Math.abs(Math.sin(t * freq)) * 0.08 // big dip each step
+        : Math.sin(t * 1.8) * 0.014;
+      if (hop > 0) {
+        hop -= dt;
+        yOff += Math.sin((1 - hop / 0.50) * Math.PI) * 0.42;
+      }
+      rig.position.y = yOff;
+
+      body.rotation.z = Math.sin(t * freq * 0.5) * (walking ? 0.05 : 0.012);
+
+      // ── Tail wag — side-to-side with cascade ─────────────────────────────
+      const wagSpeed = walking ? 7.0 : 2.5;
+      const wagAmt   = walking ? 0.45 : 0.22;
+      for (let i = 0; i < tailSegs.length; i++) {
+        tailSegs[i].rotation.z = Math.sin(t * wagSpeed + i * 0.7) * wagAmt * (1 - i * 0.15);
+      }
+
+      // ── Head animation — huge grin expressions ────────────────────────────
+      if (talking) {
+        // Exaggerated nod + lateral sway = very expressive monkey talk
+        head.rotation.z = Math.sin(t * 10) * 0.14;
+        head.rotation.x = Math.sin(t * 7)  * 0.08;
+        // Jaw drop on talk — animate lower jaw (lowerTeeth group Y)
+        lowerTeeth.position.y = -0.07 + Math.sin(t * 10) * 0.025;
+        muzzle.rotation.x     = Math.sin(t * 10) * 0.08; // jaw open
+      } else if (walking) {
+        head.rotation.x = Math.sin(t * freq) * 0.07;
+        head.rotation.z = Math.sin(t * freq * 0.5) * 0.04;
+        lowerTeeth.position.y = -0.07;
+        muzzle.rotation.x = 0;
+      } else {
+        // Idle: slow head tilt, permanent big grin, occasional cheeky brow bounce
+        head.rotation.x = Math.sin(t * 1.1) * 0.04;
+        head.rotation.z = Math.sin(t * 0.7) * 0.06;
+        lowerTeeth.position.y = -0.07;
+        muzzle.rotation.x = Math.sin(t * 0.9) * 0.03;
+      }
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
 // GLB loader
 // ---------------------------------------------------------------------------
 async function buildGLB(cfg) {
@@ -1547,6 +1846,7 @@ export async function createCharacter(cfg) {
     else if (cfg.kind === 'terminalBot') impl = buildTerminalBot(cfg);
     else if (cfg.kind === 'nightOwl')    impl = buildNightOwl(cfg);
     else if (cfg.kind === 'pythonSnake') impl = buildPythonSnake(cfg);
+    else if (cfg.kind === 'monkey')      impl = buildMonkey(cfg);
     else                                 impl = buildAnimal(cfg);
   }
   return new Character(impl);

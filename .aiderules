@@ -43,8 +43,20 @@
 - `npm test` runs `test/scheduler.test.js` via `node:test` — no extra deps needed
 - Scheduler tests require NO GUI/Electron — pure Node.js
 
+## Desk Assistant Architecture
+- `renderer/aideClient.js` — ESM fetch-based SSE streaming client (port of aideClient.ts, no TS)
+- `preload-assistant.cjs` — contextBridge exposing only `getCredentials()` and `close()` to assistant window
+- `renderer/assistant.html` + `renderer/assistant.js` — standalone BrowserWindow, NOT part of the overlay
+- Assistant window uses `sandbox: false` so Web Speech API + fetch work directly in renderer
+- AiDE credentials live in `~/.aide_creds/.env` (keys: `AIDE_BASE_URL`, `AIDE_TOKEN`)
+- Credentials loaded at startup via `loadAideCredentials()` in main.js; lazy retry on first IPC call
+- Streaming: main process streams AiDE SSE via Node.js `fetch` and relays tokens to renderer via IPC (`assistant:token`, `assistant:done`, `assistant:error`) — do NOT fetch SSE from the renderer (Chromium `chunked_data_pipe` ERR_FAILED)
+- TTS: `SpeechSynthesis` split by sentences for low-latency first word; Stop button calls `speechSynthesis.cancel()`
+
 ## Common Pitfalls
 - ESM: all files use `import`/`export` — never use `require()`
 - Electron IPC: renderer uses `window.buddy.*` (contextBridge) — never access `ipcRenderer` directly
 - `app.getPath('userData')` on Windows = `%APPDATA%\desk-buddy` (different from project dir)
 - Box3 scaling: always call `new THREE.Box3().setFromObject(root)` AFTER adding all children, BEFORE scaling
+- Assistant window has its own preload (`preload-assistant.cjs`) — do NOT reuse `preload.js`
+- Preloads MUST be `.cjs` (or `preload.js` works because Electron forces CJS for preloads) — with `"type":"module"` in package.json, rename new preloads to `.cjs` to avoid ESM parse errors

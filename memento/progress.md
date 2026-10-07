@@ -1,6 +1,15 @@
 # Progress — Desk Buddy
 
 ## What Works
+- ✅ **Desk Assistant** — voice Q&A powered by AiDE API
+  - Opens via tray menu → `🤖 Desk Assistant…`
+  - Mic button uses Web Speech API (`SpeechRecognition`) — auto-submits on speech finalisation
+  - Streams AiDE response tokens in real-time (SSE via `aideClient.js`)
+  - Reads response aloud via `SpeechSynthesis` on default speaker
+  - Text input + Send button as alternative to mic
+  - Stop button aborts in-flight request and TTS
+  - Multi-turn conversation history maintained in session
+  - Credentials loaded from `~/.aide_creds/.env` (`AIDE_BASE_URL`, `AIDE_TOKEN`)
 - ✅ Transparent always-on-top overlay window (Windows 10/11)
 - ✅ System tray icon with full context menu
 - ✅ Reminder scheduler: `at`, `everyMinutes`, `once` schedule types

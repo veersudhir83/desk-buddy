@@ -1,7 +1,7 @@
 # Active Context — Desk Buddy
 
 ## Current Focus
-Character system — 9 procedural characters fully working, immediate character switching.
+Desk Assistant feature — voice Q&A powered by AiDE API with mic input and TTS output.
 
 ## Recent Changes (this session)
 
@@ -35,9 +35,36 @@ Character system — 9 procedural characters fully working, immediate character 
 - `terminalBot`: CRT screen faces +X, legs are front/rear on X axis, cable arms in ±Z
 - Character switch during active animation: abort current sequence → re-enter `walkIn` with new character immediately
 
+## Recent Changes (this session) — Desk Assistant
+
+### New files
+| File | Purpose |
+|---|---|
+| [`renderer/aideClient.js`](renderer/aideClient.js) | ESM port of `aideClient.ts` — streams SSE from AiDE `/chat` endpoint |
+| [`preload-assistant.js`](preload-assistant.js) | contextBridge for assistant window: `getCredentials()`, `close()` |
+| [`renderer/assistant.html`](renderer/assistant.html) | Dark-themed UI: draggable title bar, conversation area, mic button, text input, Send/Stop |
+| [`renderer/assistant.js`](renderer/assistant.js) | Web Speech API mic input → AiDE stream → SpeechSynthesis TTS output |
+
+### Changes to existing files
+- **[`main.js`](main.js)**: `import os`; `loadAideCredentials()` reads `~/.aide_creds/.env`; `openAssistantWindow()` creates framed BrowserWindow with `preload-assistant.js`; `ipcMain.handle('assistant:get-credentials')` returns loaded creds; `ipcMain.on('assistant:close')` closes window; tray menu has `🤖 Desk Assistant…` item
+
+### Architecture decision — renderer-side fetch
+The assistant renderer has `sandbox: false` so it can call `fetch` and use `SpeechRecognition` / `SpeechSynthesis` directly. The main process only provides credentials via IPC (`assistant:get-credentials`) — it does NOT proxy the stream. This keeps the streaming logic simple and in one place (`aideClient.js`).
+
+### Credential format (`~/.aide_creds/.env`)
+```
+AIDE_BASE_URL=https://your-aide-server.com
+AIDE_TOKEN=your-token-here
+```
+
+## Active Decisions
+- `YAW = Math.PI/2 - 0.45` — all characters must be side-profile (+X = walking direction)
+- Character switch during active animation: abort current sequence → re-enter `walkIn` with new character
+- Assistant window: `frame: false` (custom drag titlebar) + `alwaysOnTop: false` (normal window)
+- TTS: split into sentences for low-latency start; uses default system voice
+
 ## Next Steps
 - Multi-monitor support (one overlay per display)
 - In-app reminder editor UI
 - macOS packaging
-- README update with all 9 character descriptions
-- Consider adding sound effects (optional)
+- README update with all characters + assistant feature

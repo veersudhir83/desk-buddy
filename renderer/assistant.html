@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src *;">
+  <title>Desk Assistant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #1a1d27;
+      --surface:  #23263a;
+      --border:   #32364a;
+      --accent:   #4a90f5;
+      --accent2:  #6ab0ff;
+      --danger:   #e05060;
+      --text:     #dde1f0;
+      --text-dim: #7a80a0;
+      --user-bg:  #2a4070;
+      --ai-bg:    #23263a;
+      --radius:   12px;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Title bar (draggable) ── */
+    #titlebar {
+      -webkit-app-region: drag;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 8px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #titlebar h1 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+    }
+    #titlebar h1 span { color: var(--accent2); }
+    #btn-close {
+      -webkit-app-region: no-drag;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    #btn-close:hover { background: var(--danger); color: #fff; }
+
+    /* ── Conversation area ── */
+    #conversation {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+    #conversation::-webkit-scrollbar { width: 6px; }
+    #conversation::-webkit-scrollbar-track { background: transparent; }
+    #conversation::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .msg {
+      max-width: 88%;
+      padding: 9px 13px;
+      border-radius: var(--radius);
+      line-height: 1.5;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .msg.user  { align-self: flex-end;  background: var(--user-bg); color: #e8eeff; }
+    .msg.ai    { align-self: flex-start; background: var(--ai-bg);  border: 1px solid var(--border); }
+    .msg.error { align-self: flex-start; background: #3a1520; color: #f08090; border: 1px solid var(--danger); }
+    .msg .label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+                  color: var(--text-dim); margin-bottom: 4px; }
+    .cursor-blink::after { content: '▋'; animation: blink 0.8s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Status bar ── */
+    #status {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      padding: 4px 0 2px;
+      min-height: 20px;
+      flex-shrink: 0;
+    }
+    #status.listening { color: #60d080; }
+    #status.thinking  { color: var(--accent2); }
+    #status.speaking  { color: #e0b040; }
+    #status.error     { color: var(--danger); }
+
+    /* ── Control bar ── */
+    #controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px 14px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #btn-mic {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: var(--bg);
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 22px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    #btn-mic:hover  { background: #1e3a6a; }
+    #btn-mic.active { background: var(--accent); color: #fff; border-color: var(--accent2);
+                      animation: pulse 1.2s ease-in-out infinite; }
+    #btn-mic:disabled { opacity: 0.4; cursor: not-allowed; animation: none; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+    #transcript-box {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--text);
+      min-height: 40px;
+      max-height: 80px;
+      overflow-y: auto;
+      outline: none;
+      resize: none;
+      line-height: 1.4;
+    }
+    #transcript-box:empty::before { content: attr(data-placeholder); color: var(--text-dim); }
+    #transcript-box:focus { border-color: var(--accent); }
+
+    #btn-send {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0 18px;
+      height: 40px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    #btn-send:hover    { background: var(--accent2); }
+    #btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #btn-stop {
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0 14px;
+      height: 40px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: none;
+    }
+    #btn-stop:hover { filter: brightness(1.1); }
+  </style>
+</head>
+<body>
+  <div id="titlebar">
+    <h1>🤖 Desk <span>Assistant</span></h1>
+    <button id="btn-close" title="Close">✕</button>
+  </div>
+
+  <div id="conversation">
+    <div class="msg ai">
+      <div class="label">ASSISTANT</div>
+      Hi! Press the mic button and ask me anything, or type your question below.
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="controls">
+    <button id="btn-mic" title="Hold to speak (or click to toggle)">🎤</button>
+    <div id="transcript-box" contenteditable="true" data-placeholder="Or type your question here…" role="textbox" aria-label="Question input"></div>
+    <button id="btn-send">Send</button>
+    <button id="btn-stop">■ Stop</button>
+  </div>
+
+  <script type="module" src="./assistant.js"></script>
+</body>
+</html>
