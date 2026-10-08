@@ -1,10 +1,9 @@
-'use strict';
-const test = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { Scheduler, SNOOZE_MS } = require('../src/scheduler');
+import test from 'node:test';
+import assert from 'node:assert';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { Scheduler, SNOOZE_MS } from '../src/scheduler.js';
 
 function setup(reminders, startedAt = new Date(2026, 9, 7, 8, 0)) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'buddy-'));
@@ -26,6 +25,16 @@ test('"at" fires once per day, then again the next day', () => {
 test('"at" is dropped after the grace period', () => {
   const { s } = setup([{ id: 'a', text: 'x', at: '09:30' }]);
   assert.equal(s.due(at(12, 0)).length, 0);
+});
+
+test('"at" as array fires at each listed time', () => {
+  const { s } = setup([{ id: 'a', text: 'x', at: ['09:30', '11:55'] }]);
+  assert.equal(s.due(at(9, 29)).length, 0);
+  assert.equal(s.due(at(9, 30)).length, 1);  // first slot
+  assert.equal(s.due(at(9, 31)).length, 0);
+  assert.equal(s.due(at(11, 54)).length, 0);
+  assert.equal(s.due(at(11, 55)).length, 1); // second slot
+  assert.equal(s.due(at(11, 56)).length, 0);
 });
 
 test('"days" filters by weekday (0 = Sunday)', () => {

@@ -106,10 +106,15 @@ class Scheduler {
       return !isNaN(t) && now >= t && !last;
     }
     if (r.at) {
-      const t = atToday(r.at, now);
-      if (!t) return false;
+      // r.at may be a single "HH:MM" string or an array of "HH:MM" strings (multiple daily times)
+      const atTimes = Array.isArray(r.at) ? r.at : [r.at];
       if (Array.isArray(r.days) && !r.days.includes(now.getDay())) return false;
-      return now >= t && now - t <= GRACE_MS && (!last || last < t);
+      for (const hhmm of atTimes) {
+        const t = atToday(hhmm, now);
+        if (!t) continue;
+        if (now >= t && now - t <= GRACE_MS && (!last || last < t)) return true;
+      }
+      return false;
     }
     if (Number(r.everyMinutes) > 0) {
       if (!inWindow(r.between, now)) return false;
