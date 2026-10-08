@@ -14,13 +14,7 @@ const __dirname  = path.dirname(__filename);
 const CHARACTERS = [
   { id: 'mouse',       label: 'Mouse 🐭 (Tom & Jerry)' },
   { id: 'roboDog',     label: 'Robo Dog 🤖'            },
-  { id: 'penguin',     label: 'Penguin 🐧'              },
-  { id: 'astronaut',   label: 'Astronaut 👨‍🚀'            },
-  { id: 'rubberDuck',  label: 'Rubber Duck 🦆'          },
   { id: 'coffeeCup',   label: 'Coffee Cup ☕'           },
-  { id: 'debugBug',    label: 'Debug Bug 🐛'            },
-  { id: 'terminalBot', label: 'Terminal Bot 💻'         },
-  { id: 'nightOwl',    label: 'Night Owl 🦉'            },
   { id: 'pythonSnake', label: 'Python Snake 🐍'         },
   { id: 'monkey',      label: 'Monkey 🐒'               },
 ];
@@ -506,8 +500,58 @@ function registerIpc() {
     if (!event.sender.isDestroyed()) event.sender.send('assistant:done', fullText);
   });
 
+  // ── TTS via PowerShell SAPI (high-quality Windows Neural voices) ──────────
+  // We spawn a persistent PowerShell process per speak request.
+  // The script picks the best available voice: Neural > Standard English.
+  let ttsProc = null;
+
+  ipcMain.handle('assistant:speak', (_event, text) => {
+    return new Promise((resolve) => {
+      // Kill any previous TTS
+      if (ttsProc) { try { ttsProc.kill(); } catch (_) {} ttsProc = null; }
+
+      // Write a temp .ps1 file — avoids all shell-quoting issues
+      const tmpScript = path.join(app.getPath('temp'), 'buddy-tts.ps1');
+      // Escape single-quotes for PowerShell string literal
+      const safe = (text || '').replace(/'/g, "''").replace(/[\r\n]+/g, ' ');
+
+      const ps = [
+        'Add-Type -AssemblyName System.Speech',
+        '$s = New-Object System.Speech.Synthesis.SpeechSynthesizer',
+        '$voices = $s.GetInstalledVoices() | Where-Object { $_.Enabled } | Select-Object -ExpandProperty VoiceInfo',
+        "$neural  = $voices | Where-Object { $_.Name -match 'Neural|Aria|Guy|Jenny|Ryan|Sonia|Libby|Mia|Zira|David' } | Select-Object -First 1",
+        "$english = $voices | Where-Object { $_.Culture.Name -match '^en' } | Select-Object -First 1",
+        '$chosen  = if ($neural) { $neural } elseif ($english) { $english } else { $null }',
+        'if ($chosen) { $s.SelectVoice($chosen.Name) }',
+        '$s.Rate   = 0',
+        '$s.Volume = 100',
+        `$s.Speak('${safe}')`,
+        '$s.Dispose()',
+      ].join('\r\n');
+
+      try { fs.writeFileSync(tmpScript, ps, 'utf8'); } catch (e) { return resolve(); }
+
+      // Run the script file — no quoting issues with -File
+      ttsProc = exec(
+        `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${tmpScript}"`,
+        { windowsHide: true, timeout: 120_000 },
+        (err) => {
+          ttsProc = null;
+          try { fs.unlinkSync(tmpScript); } catch (_) {}
+          if (err && err.killed) return resolve(); // stopped intentionally
+          resolve();
+        }
+      );
+    });
+  });
+
+  ipcMain.on('assistant:speak-stop', () => {
+    if (ttsProc) { try { ttsProc.kill(); } catch (_) {} ttsProc = null; }
+  });
+
   // Close the assistant window
   ipcMain.on('assistant:close', () => {
+    if (ttsProc) { try { ttsProc.kill(); } catch (_) {} ttsProc = null; }
     if (assistantWin && !assistantWin.isDestroyed()) assistantWin.close();
   });
 }

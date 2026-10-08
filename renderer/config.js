@@ -20,13 +20,7 @@ export const CONFIG = {
   // RoboDog — animated 3-D cartoon robot dog. Procedural; swap `model` for a .glb
   // with Idle/Walk/Talk clips (see assets/models/README.md).
   roboDog:     { kind: 'roboDog',     height: 240, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
-  penguin:     { kind: 'penguin',     height: 160, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
-  astronaut:   { kind: 'astronaut',   height: 220, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
-  rubberDuck:  { kind: 'rubberDuck',  height: 130, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
   coffeeCup:   { kind: 'coffeeCup',   height: 150, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
-  debugBug:    { kind: 'debugBug',    height: 110, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
-  terminalBot: { kind: 'terminalBot', height: 210, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
-  nightOwl:    { kind: 'nightOwl',    height: 175, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
   pythonSnake: { kind: 'pythonSnake', height: 140, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
   monkey:      { kind: 'monkey',      height: 200, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
 

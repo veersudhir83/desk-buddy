@@ -2,20 +2,43 @@
  * Desk Assistant renderer
  *
  * Flow:
- *   1. User presses mic button → SpeechRecognition captures voice → transcript appears in box
- *   2. User presses Send (or recognition auto-submits) → messages sent to main via IPC
- *   3. Main process (Node.js fetch, no Chromium pipe limits) streams AiDE SSE tokens back via IPC
- *   4. Tokens displayed in conversation + full text spoken via SpeechSynthesis on default speaker
+ *   1. User types in input box and presses Send / Enter
+ *   2. Main process streams AiDE SSE tokens back via IPC
+ *   3. Tokens accumulated, markdown rendered as clean HTML
+ *   4. Full response spoken via main-process PowerShell SAPI TTS
+ *      (uses high-quality Windows Neural voices — much better than browser TTS)
+ *      — voice output can be toggled on/off via the 🔊 button in the titlebar
  */
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
-const conversation   = document.getElementById('conversation');
-const statusEl       = document.getElementById('status');
-const btnMic         = document.getElementById('btn-mic');
-const transcriptBox  = document.getElementById('transcript-box');
-const btnSend        = document.getElementById('btn-send');
-const btnStop        = document.getElementById('btn-stop');
-const btnClose       = document.getElementById('btn-close');
+const conversation  = document.getElementById('conversation');
+const statusEl      = document.getElementById('status');
+const inputBox      = document.getElementById('input-box');
+const btnSend       = document.getElementById('btn-send');
+const btnStop       = document.getElementById('btn-stop');
+const btnClose      = document.getElementById('btn-close');
+const btnTtsToggle  = document.getElementById('btn-tts-toggle');
+
+// ── TTS enabled state (persisted in sessionStorage) ───────────────────────────
+let ttsEnabled = sessionStorage.getItem('tts-enabled') !== 'false';
+function syncTtsButton() {
+  if (ttsEnabled) {
+    btnTtsToggle.textContent = '🔊 Voice';
+    btnTtsToggle.className   = 'on';
+    btnTtsToggle.title       = 'Voice output ON — click to disable';
+  } else {
+    btnTtsToggle.textContent = '🔇 Voice';
+    btnTtsToggle.className   = 'off';
+    btnTtsToggle.title       = 'Voice output OFF — click to enable';
+  }
+}
+syncTtsButton();
+btnTtsToggle.addEventListener('click', () => {
+  ttsEnabled = !ttsEnabled;
+  sessionStorage.setItem('tts-enabled', ttsEnabled);
+  if (!ttsEnabled) window.assistant.stopSpeak();
+  syncTtsButton();
+});
 
 // ── Conversation history (kept for multi-turn context) ────────────────────────
 const history = [];
@@ -24,6 +47,73 @@ const history = [];
 function setStatus(text, cls = '') {
   statusEl.textContent = text;
   statusEl.className   = cls;
+}
+
+// ── Markdown → readable HTML ──────────────────────────────────────────────────
+function markdownToHtml(md) {
+  if (!md) return '';
+
+  let html = md
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>');
+
+  // Fenced code blocks
+  html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) =>
+    `<pre><code>${code.trim()}</code></pre>`);
+
+  // Inline code
+  html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+  // Headings
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
+
+  // Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g,     '<strong>$1</strong>');
+
+  // Italic
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  html = html.replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/g,      '<em>$1</em>');
+
+  // Horizontal rule
+  html = html.replace(/^[-*]{3,}$/gm, '<hr>');
+
+  // List items
+  html = html.replace(/^[ \t]*[-*+] (.+)$/gm,   '<li>$1</li>');
+  html = html.replace(/^[ \t]*\d+\. (.+)$/gm,   '<li>$1</li>');
+
+  // Wrap consecutive <li> blocks
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`);
+
+  // Paragraphs
+  const blocks = html.split(/\n{2,}/);
+  html = blocks.map(block => {
+    block = block.trim();
+    if (!block) return '';
+    if (/^<(h[1-3]|ul|ol|li|pre|hr)/.test(block)) return block;
+    return `<p>${block.replace(/\n/g, ' ')}</p>`;
+  }).join('\n');
+
+  return html;
+}
+
+// ── Strip markdown for TTS (so voice doesn't say "asterisk asterisk") ─────────
+function stripMarkdownForTts(text) {
+  return text
+    .replace(/```[\w]*\n?([\s\S]*?)```/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/#{1,6} /g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/^[-*+] /gm, '')
+    .replace(/^\d+\. /gm, '')
+    .replace(/[-]{3,}/g, '')
+    .trim();
 }
 
 // ── Conversation UI helpers ───────────────────────────────────────────────────
@@ -36,8 +126,13 @@ function addMessage(role, text) {
     lbl.textContent = role === 'user' ? 'YOU' : 'ASSISTANT';
     div.appendChild(lbl);
   }
-  const content = document.createElement('span');
-  content.textContent = text;
+  const content = document.createElement('div');
+  if (role === 'ai') {
+    content.className = 'ai-body';
+    content.innerHTML = markdownToHtml(text);
+  } else {
+    content.textContent = text;
+  }
   div.appendChild(content);
   conversation.appendChild(div);
   conversation.scrollTop = conversation.scrollHeight;
@@ -51,80 +146,13 @@ function addStreamingMessage() {
   lbl.className = 'label';
   lbl.textContent = 'ASSISTANT';
   div.appendChild(lbl);
-  const content = document.createElement('span');
-  content.className = 'cursor-blink';
+  const content = document.createElement('div');
+  content.className = 'ai-body cursor-blink';
   div.appendChild(content);
   conversation.appendChild(div);
   conversation.scrollTop = conversation.scrollHeight;
   return { div, content };
 }
-
-// ── Speech Recognition (mic → text) ──────────────────────────────────────────
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition = null;
-let recognising = false;
-
-if (SpeechRecognition) {
-  recognition = new SpeechRecognition();
-  recognition.continuous     = false;
-  recognition.interimResults = true;
-  recognition.lang            = 'en-US';
-  recognition.maxAlternatives = 1;
-
-  recognition.onstart = () => {
-    recognising = true;
-    btnMic.classList.add('active');
-    btnMic.title = 'Listening… click to stop';
-    setStatus('🎤 Listening…', 'listening');
-  };
-
-  recognition.onresult = (e) => {
-    let interim = '';
-    let finalText = '';
-    for (const result of e.results) {
-      if (result.isFinal) finalText += result[0].transcript;
-      else                interim  += result[0].transcript;
-    }
-    transcriptBox.textContent = finalText || interim;
-    if (finalText) {
-      stopRecognition();
-      sendQuestion(finalText.trim());
-    }
-  };
-
-  recognition.onerror = (e) => {
-    console.warn('[assistant] SpeechRecognition error:', e.error);
-    stopRecognition();
-    if (e.error !== 'aborted') setStatus(`Mic error: ${e.error}`, 'error');
-    else setStatus('', '');
-  };
-
-  recognition.onend = () => {
-    recognising = false;
-    btnMic.classList.remove('active');
-    btnMic.title = 'Click to speak';
-    if (statusEl.classList.contains('listening')) setStatus('', '');
-  };
-} else {
-  btnMic.disabled = true;
-  btnMic.title    = 'Speech recognition not available';
-}
-
-function startRecognition() {
-  if (!recognition || recognising) return;
-  transcriptBox.textContent = '';
-  recognition.start();
-}
-
-function stopRecognition() {
-  if (!recognition || !recognising) return;
-  recognition.stop();
-}
-
-btnMic.addEventListener('click', () => {
-  if (recognising) stopRecognition();
-  else             startRecognition();
-});
 
 // ── In-progress flag ──────────────────────────────────────────────────────────
 let streaming = false;
@@ -133,65 +161,58 @@ let streaming = false;
 function sendQuestion(text) {
   if (!text?.trim() || streaming) return;
 
-  transcriptBox.textContent = '';
+  inputBox.textContent = '';
 
-  // Add user message to history + UI
   history.push({ role: 'user', content: text });
   addMessage('user', text);
 
-  // Disable inputs, show stop
   streaming = true;
   setStatus('⏳ Thinking…', 'thinking');
   btnSend.disabled = true;
-  btnMic.disabled  = true;
   btnStop.style.display = 'inline-block';
 
-  // Streaming bubble
   const { div: aiDiv, content: aiContent } = addStreamingMessage();
-  let fullText = '';
+  let rawText = '';
 
-  // Remove stale listeners from any previous request
   window.assistant.removeStreamListeners();
 
-  // Wire up new listeners
   window.assistant.onToken((token) => {
-    fullText += token;
-    aiContent.textContent = fullText;
+    rawText += token;
+    aiContent.innerHTML = markdownToHtml(rawText);
     conversation.scrollTop = conversation.scrollHeight;
   });
 
   window.assistant.onDone((full) => {
     aiContent.classList.remove('cursor-blink');
-    if (full) fullText = full;
-    history.push({ role: 'assistant', content: fullText });
-    speakText(fullText);
+    if (full) rawText = full;
+    aiContent.innerHTML = markdownToHtml(rawText);
+    history.push({ role: 'assistant', content: rawText });
+    speakText(rawText);
     resetInputState();
   });
 
   window.assistant.onError((message) => {
     aiContent.classList.remove('cursor-blink');
     aiDiv.className = 'msg error';
+    aiContent.className = '';
     aiContent.textContent = `Error: ${message}`;
     setStatus(`⚠ ${message}`, 'error');
     resetInputState(false);
   });
 
-  // Send full history to main (user message already pushed above)
   window.assistant.chat(history);
 }
 
 function resetInputState(showReady = true) {
   streaming = false;
   btnSend.disabled      = false;
-  btnMic.disabled       = !recognition;
   btnStop.style.display = 'none';
   if (showReady) setStatus('', '');
 }
 
-// ── Stop button — cancel TTS; IPC stream can't be cancelled from renderer
-// (main will finish but we ignore remaining tokens by removing listeners) ─────
+// ── Stop button ───────────────────────────────────────────────────────────────
 btnStop.addEventListener('click', () => {
-  window.speechSynthesis?.cancel();
+  window.assistant.stopSpeak();
   window.assistant.removeStreamListeners();
   resetInputState(false);
   setStatus('Stopped', '');
@@ -199,44 +220,33 @@ btnStop.addEventListener('click', () => {
 
 // ── Send button / Enter key ───────────────────────────────────────────────────
 btnSend.addEventListener('click', () => {
-  const text = transcriptBox.textContent.trim();
+  const text = inputBox.textContent.trim();
   if (text) sendQuestion(text);
 });
 
-transcriptBox.addEventListener('keydown', (e) => {
+inputBox.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    const text = transcriptBox.textContent.trim();
+    const text = inputBox.textContent.trim();
     if (text) sendQuestion(text);
   }
 });
 
-// ── Text-to-Speech ─────────────────────────────────────────────────────────────
+// ── Text-to-Speech via main process (PowerShell SAPI — high-quality voices) ──
 function speakText(text) {
-  if (!window.speechSynthesis || !text?.trim()) return;
-  window.speechSynthesis.cancel();
-
-  // Split into sentences for low-latency start
-  const sentences = text.match(/[^.!?\n]+[.!?\n]*/g) ?? [text];
+  if (!ttsEnabled || !text?.trim()) return;
+  const clean = stripMarkdownForTts(text);
   setStatus('🔊 Speaking…', 'speaking');
-
-  let i = 0;
-  function speakNext() {
-    if (i >= sentences.length) { setStatus('', ''); return; }
-    const utt = new SpeechSynthesisUtterance(sentences[i++].trim());
-    utt.rate   = 1.05;
-    utt.pitch  = 1.0;
-    utt.volume = 1.0;
-    utt.onend   = speakNext;
-    utt.onerror = (e) => { if (e.error !== 'interrupted') console.warn('[TTS]', e.error); speakNext(); };
-    window.speechSynthesis.speak(utt);
-  }
-  speakNext();
+  window.assistant.speak(clean).then(() => {
+    setStatus('', '');
+  }).catch(() => {
+    setStatus('', '');
+  });
 }
 
 // ── Close button ──────────────────────────────────────────────────────────────
 btnClose.addEventListener('click', () => {
-  window.speechSynthesis?.cancel();
+  window.assistant.stopSpeak();
   window.assistant.removeStreamListeners();
   window.assistant.close();
 });
@@ -245,10 +255,9 @@ btnClose.addEventListener('click', () => {
 (async () => {
   try {
     await window.assistant.getCredentials();
-    setStatus('Ready — press 🎤 or type a question', '');
+    setStatus('Ready — type a question and press Send', '');
   } catch (err) {
     setStatus(`⚠ ${err.message}`, 'error');
-    btnMic.disabled  = true;
     btnSend.disabled = true;
   }
 })();

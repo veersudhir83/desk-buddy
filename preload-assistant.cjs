@@ -26,6 +26,16 @@ contextBridge.exposeInMainWorld('assistant', {
     ipcRenderer.removeAllListeners('assistant:error');
   },
 
+  /**
+   * Speak text via main-process PowerShell SAPI (high-quality Windows voices).
+   * Returns a Promise that resolves when speech completes.
+   * @param {string} text
+   */
+  speak:     (text) => ipcRenderer.invoke('assistant:speak', text),
+
+  /** Stop any in-progress SAPI speech immediately */
+  stopSpeak: ()     => ipcRenderer.send('assistant:speak-stop'),
+
   /** Close this window */
   close: () => ipcRenderer.send('assistant:close'),
 });
