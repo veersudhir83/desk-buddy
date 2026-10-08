@@ -1,15 +1,6 @@
 # Progress — Desk Buddy
 
 ## What Works
-- ✅ **Desk Assistant** — voice Q&A powered by AiDE API
-  - Opens via tray menu → `🤖 Desk Assistant…`
-  - Mic button uses Web Speech API (`SpeechRecognition`) — auto-submits on speech finalisation
-  - Streams AiDE response tokens in real-time (SSE via `aideClient.js`)
-  - Reads response aloud via `SpeechSynthesis` on default speaker
-  - Text input + Send button as alternative to mic
-  - Stop button aborts in-flight request and TTS
-  - Multi-turn conversation history maintained in session
-  - Credentials loaded from `~/.aide_creds/.env` (`AIDE_BASE_URL`, `AIDE_TOKEN`)
 - ✅ Transparent always-on-top overlay window (Windows 10/11)
 - ✅ System tray icon with full context menu
 - ✅ Reminder scheduler: `at`, `everyMinutes`, `once` schedule types
@@ -17,17 +8,12 @@
 - ✅ Speech bubble with Done / Snooze buttons
 - ✅ Click-through when idle; mouse hit-testing when active
 - ✅ Character walk-in / speak / waitAck / walk-out state machine
-- ✅ **10 selectable characters** via tray menu
-  - Mouse + Cat (Tom & Jerry style chaser)
-  - RoboDog — cartoon robot dog, glowing eye, segmented tail wag
-  - Penguin — tuxedo waddle, flipper swing
-  - Astronaut — puffy suit, moonwalk bounce, visor glow
-  - Rubber Duck — bath toy bob, googly eyes, beak
-  - Coffee Cup — ceramic mug face, steam wisps, caffeinated jitter ✅ *fixed*
-  - Debug Bug — 6-leg tripod gait, antennae wiggle, compound eyes ✅ *fixed*
-  - Terminal Bot — CRT screen, phosphor cursor blink, stiff march ✅ *fixed*
-  - Night Owl — sleepy shuffle, round glasses, slow blink
-  - Python Snake — 12-segment sinusoidal body, beret, tongue flick
+- ✅ **5 selectable characters** via tray menu
+  - Mouse 🐭 (Tom & Jerry style chaser)
+  - Robo Dog 🤖 — cartoon robot dog, glowing eye, segmented tail wag
+  - Coffee Cup ☕ — ceramic mug face, steam wisps, caffeinated jitter
+  - Python Snake 🐍 — 12-segment sinusoidal body, beret, tongue flick
+  - Monkey 🐒
 - ✅ **Immediate character switching** — selecting a character from the tray now applies instantly, even mid-animation (re-enters walkIn with new character)
 - ✅ Character preference persisted across restarts (`state.json`)
 - ✅ Screen-share / meeting auto-pause
@@ -45,12 +31,10 @@
 - ⬜ Linux packaging / testing
 - ⬜ Screen-share detection on Linux
 - ⬜ `SHQueryUserNotificationState` for fullscreen / presentation DND (Windows native)
-- ⬜ README update with all 9 lead character descriptions + screenshots
+- ⬜ README update with all character descriptions + screenshots
 
 ## Current Status
-**Active development** — all 10 characters functional, immediate switching works. Core feature set complete.
+Core feature-complete for Windows. Desk Assistant feature removed. Next priority: multi-monitor support or in-app reminder editor.
 
-## Known Bugs / Limitations
-- Transparency requires GPU compositing; `--disable-gpu` fallback shows solid background
-- SmartScreen warning expected on unsigned installer builds
-- macOS screen-share detection is best-effort (process-name heuristic only)
+## Recently Removed
+- ~~Desk Assistant~~ — voice Q&A via AiDE API removed (all assistant IPC, credentials loading, TTS, preload, and UI files deleted)

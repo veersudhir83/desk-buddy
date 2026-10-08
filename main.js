@@ -2,7 +2,6 @@ import * as electronNs from 'electron/main';
 const { app, BrowserWindow, Menu, Tray, nativeImage, screen, ipcMain, shell } = electronNs['module.exports'] || electronNs;
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
 import { Scheduler } from './src/scheduler.js';
@@ -75,38 +74,7 @@ const MEETING_PROCS_MAC = [
   'firefox',
 ];
 
-// ── AiDE credentials (loaded once at startup from ~/.aide_creds/.env) ────────
-let aideCredentials = null; // { baseUrl, token }
-
-function loadAideCredentials() {
-  try {
-    const envPath = path.join(os.homedir(), '.aide_creds', '.env');
-    const raw = fs.readFileSync(envPath, 'utf8');
-    const vars = {};
-    for (const line of raw.split(/\r?\n/)) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const eq = trimmed.indexOf('=');
-      if (eq < 1) continue;
-      const key = trimmed.slice(0, eq).trim();
-      const val = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
-      vars[key] = val;
-    }
-    if (!vars.AIDE_TOKEN) throw new Error('AIDE_TOKEN not set in ~/.aide_creds/.env');
-    aideCredentials = {
-      baseUrl:   vars.AIDE_BASE_URL || 'https://aide.example.com',
-      token:     vars.AIDE_TOKEN,
-      timeoutMs: 60_000,
-    };
-    console.log('[main] AiDE credentials loaded from ~/.aide_creds/.env');
-  } catch (err) {
-    console.warn('[main] Could not load AiDE credentials:', err.message);
-    aideCredentials = null;
-  }
-}
-
 let win           = null;
-let assistantWin  = null; // Desk Assistant window
 let tray          = null;
 let scheduler     = null;
 let rendererReady = false;
@@ -305,48 +273,9 @@ function setCharacter(id) {
 }
 
 // ---- Tray menu ----
-// ── Assistant window ──────────────────────────────────────────────────────────
-function openAssistantWindow() {
-  if (assistantWin && !assistantWin.isDestroyed()) {
-    assistantWin.focus();
-    return;
-  }
-
-  assistantWin = new BrowserWindow({
-    width: 460, height: 640,
-    minWidth: 360, minHeight: 480,
-    title: 'Desk Assistant',
-    frame: false,          // custom title bar
-    transparent: false,
-    resizable: true,
-    alwaysOnTop: false,
-    skipTaskbar: false,
-    show: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload-assistant.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,       // needs fetch + Web Speech API
-    }
-  });
-
-  assistantWin.loadFile(path.join(__dirname, 'renderer', 'assistant.html'));
-  assistantWin.once('ready-to-show', () => assistantWin.show());
-  assistantWin.on('closed', () => { assistantWin = null; });
-
-  if (VERBOSE) {
-    assistantWin.webContents.on('console-message', (...args) => {
-      const first = args[0];
-      const msg = first?.message ?? args[2];
-      console.log('[assistant]', msg);
-    });
-  }
-}
-
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
     { label: 'Test reminder (now)', click: testReminder },
-    { label: '🤖 Desk Assistant…', click: openAssistantWindow },
     { type: 'separator' },
     {
       label: screenSharePaused
@@ -414,148 +343,6 @@ function registerIpc() {
     setTimeout(pump, GAP_BETWEEN_REMINDERS_MS);
   });
 
-  // ── Assistant IPC ───────────────────────────────────────────────────────────
-
-  // Renderer asks for AiDE credentials
-  ipcMain.handle('assistant:get-credentials', () => {
-    if (!aideCredentials) loadAideCredentials(); // lazy retry if first load failed
-    if (!aideCredentials) {
-      throw new Error('AiDE credentials not found. Add AIDE_BASE_URL and AIDE_TOKEN to ~/.aide_creds/.env');
-    }
-    return aideCredentials;
-  });
-
-  // Renderer sends conversation messages; main streams AiDE response back as IPC tokens.
-  // This runs in the Node.js main process (not Chromium renderer) so fetch + ReadableStream
-  // work reliably without the chunked_data_pipe ERR_FAILED issue.
-  ipcMain.on('assistant:chat', async (event, messages) => {
-    if (!aideCredentials) {
-      if (!event.sender.isDestroyed()) event.sender.send('assistant:error', 'AiDE credentials not configured');
-      return;
-    }
-
-    const endpoint = `${aideCredentials.baseUrl}/chat`;
-    const payload  = {
-      messages: [
-        { role: 'system', content: 'You are a helpful desk assistant. Be concise and clear.' },
-        ...messages,
-      ],
-      stream: true,
-    };
-
-    let response;
-    try {
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${aideCredentials.token}`,
-          'Accept':        'application/json, text/event-stream',
-        },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(aideCredentials.timeoutMs ?? 60_000),
-      });
-    } catch (err) {
-      if (!event.sender.isDestroyed()) event.sender.send('assistant:error', err.message);
-      return;
-    }
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      if (!event.sender.isDestroyed()) event.sender.send('assistant:error', `HTTP ${response.status}: ${body}`);
-      return;
-    }
-
-    let fullText = '';
-    let buffer   = '';
-    const decoder = new TextDecoder();
-    const reader   = response.body.getReader();
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === 'data: [DONE]') continue;
-          if (!trimmed.startsWith('data:')) continue;
-          try {
-            const chunk   = JSON.parse(trimmed.slice('data:'.length).trim());
-            const content = chunk.choices?.[0]?.delta?.content;
-            if (content) {
-              fullText += content;
-              if (!event.sender.isDestroyed()) event.sender.send('assistant:token', content);
-            }
-          } catch { /* skip non-JSON lines */ }
-        }
-      }
-    } catch (err) {
-      if (!event.sender.isDestroyed()) event.sender.send('assistant:error', err.message);
-      return;
-    }
-
-    if (!event.sender.isDestroyed()) event.sender.send('assistant:done', fullText);
-  });
-
-  // ── TTS via PowerShell SAPI (high-quality Windows Neural voices) ──────────
-  // We spawn a persistent PowerShell process per speak request.
-  // The script picks the best available voice: Neural > Standard English.
-  let ttsProc = null;
-
-  ipcMain.handle('assistant:speak', (_event, text) => {
-    return new Promise((resolve) => {
-      // Kill any previous TTS
-      if (ttsProc) { try { ttsProc.kill(); } catch (_) {} ttsProc = null; }
-
-      // Write a temp .ps1 file — avoids all shell-quoting issues
-      const tmpScript = path.join(app.getPath('temp'), 'buddy-tts.ps1');
-      // Escape single-quotes for PowerShell string literal
-      const safe = (text || '').replace(/'/g, "''").replace(/[\r\n]+/g, ' ');
-
-      const ps = [
-        'Add-Type -AssemblyName System.Speech',
-        '$s = New-Object System.Speech.Synthesis.SpeechSynthesizer',
-        '$voices = $s.GetInstalledVoices() | Where-Object { $_.Enabled } | Select-Object -ExpandProperty VoiceInfo',
-        // Prefer: Neural voices first, then Zira (female, clearer), then any English
-        "$neural  = $voices | Where-Object { $_.Name -match 'Neural|Aria|Jenny|Ryan|Sonia|Libby|Mia' } | Select-Object -First 1",
-        "$zira    = $voices | Where-Object { $_.Name -match 'Zira' } | Select-Object -First 1",
-        "$english = $voices | Where-Object { $_.Culture.Name -match '^en' } | Select-Object -First 1",
-        '$chosen  = if ($neural) { $neural } elseif ($zira) { $zira } elseif ($english) { $english } else { $null }',
-        'if ($chosen) { $s.SelectVoice($chosen.Name) }',
-        '$s.Rate   = -1',
-        '$s.Volume = 100',
-        `$s.Speak('${safe}')`,
-        '$s.Dispose()',
-      ].join('\r\n');
-
-      try { fs.writeFileSync(tmpScript, ps, 'utf8'); } catch (e) { return resolve(); }
-
-      // Run the script file — no quoting issues with -File
-      ttsProc = exec(
-        `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${tmpScript}"`,
-        { windowsHide: true, timeout: 120_000 },
-        (err) => {
-          ttsProc = null;
-          try { fs.unlinkSync(tmpScript); } catch (_) {}
-          if (err && err.killed) return resolve(); // stopped intentionally
-          resolve();
-        }
-      );
-    });
-  });
-
-  ipcMain.on('assistant:speak-stop', () => {
-    if (ttsProc) { try { ttsProc.kill(); } catch (_) {} ttsProc = null; }
-  });
-
-  // Close the assistant window
-  ipcMain.on('assistant:close', () => {
-    if (ttsProc) { try { ttsProc.kill(); } catch (_) {} ttsProc = null; }
-    if (assistantWin && !assistantWin.isDestroyed()) assistantWin.close();
-  });
 }
 
 function main() {
@@ -564,16 +351,14 @@ function main() {
     return;
   }
   app.on('window-all-closed', () => { /* tray app: keep running */ });
-  // Second instance → focus / open assistant window
+  // Second instance → focus overlay window
   app.on('second-instance', () => {
-    if (assistantWin && !assistantWin.isDestroyed()) assistantWin.focus();
-    else if (win) win.focus();
+    if (win) win.focus();
   });
 
   app.whenReady().then(() => {
     seedReminders();
     loadCharacterPreference();
-    loadAideCredentials();
     scheduler = new Scheduler({
       remindersPath: remindersPath(),
       statePath:     statePath()

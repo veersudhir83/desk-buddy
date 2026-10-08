@@ -1,9 +1,9 @@
 # Active Context — Desk Buddy
 
 ## Current Focus
-Desk Assistant feature — voice Q&A powered by AiDE API with mic input and TTS output.
+Maintaining and improving the core character animation overlay and reminder system.
 
-## Recent Changes (this session)
+## Recent Changes (last session)
 
 ### 1. Six dev-themed characters added (`renderer/characters.js`)
 | Kind | Builder | Notes |
@@ -25,8 +25,14 @@ Desk Assistant feature — voice Q&A powered by AiDE API with mic input and TTS 
 
 ### 4. All characters wired end-to-end
 - `renderer/config.js` — 9 character config entries + heights
-- `main.js` — `CHARACTERS` array with 10 tray menu entries (mouse + 9 leads)
-- `renderer/main.js` — `Promise.all` preload of all 11 character instances; `CHAR_MAP` generic lookup; `leadHeight()` uses config lookup
+- `main.js` — `CHARACTERS` array with 5 tray menu entries
+- `renderer/main.js` — `Promise.all` preload of all character instances; `CHAR_MAP` generic lookup; `leadHeight()` uses config lookup
+
+### 5. Desk Assistant removed
+- Removed `openAssistantWindow()`, all `assistant:*` IPC handlers, AiDE credentials loading, and TTS PowerShell code from `main.js`
+- Deleted files: `preload-assistant.cjs`, `preload-assistant.js`, `renderer/assistant.html`, `renderer/assistant.js`, `renderer/aideClient.js`, `aideClient.ts`
+- Removed `import os` (no longer needed) and `assistantWin` variable from `main.js`
+- Removed `🤖 Desk Assistant…` tray menu item
 
 ## Active Decisions
 - `YAW = Math.PI/2 - 0.45` — all characters must be side-profile (+X = walking direction, +Y = up, face features toward `+X`)
@@ -35,36 +41,7 @@ Desk Assistant feature — voice Q&A powered by AiDE API with mic input and TTS 
 - `terminalBot`: CRT screen faces +X, legs are front/rear on X axis, cable arms in ±Z
 - Character switch during active animation: abort current sequence → re-enter `walkIn` with new character immediately
 
-## Recent Changes (this session) — Desk Assistant
-
-### New files
-| File | Purpose |
-|---|---|
-| [`renderer/aideClient.js`](renderer/aideClient.js) | ESM port of `aideClient.ts` — streams SSE from AiDE `/chat` endpoint |
-| [`preload-assistant.js`](preload-assistant.js) | contextBridge for assistant window: `getCredentials()`, `close()` |
-| [`renderer/assistant.html`](renderer/assistant.html) | Dark-themed UI: draggable title bar, conversation area, mic button, text input, Send/Stop |
-| [`renderer/assistant.js`](renderer/assistant.js) | Web Speech API mic input → AiDE stream → SpeechSynthesis TTS output |
-
-### Changes to existing files
-- **[`main.js`](main.js)**: `import os`; `loadAideCredentials()` reads `~/.aide_creds/.env`; `openAssistantWindow()` creates framed BrowserWindow with `preload-assistant.js`; `ipcMain.handle('assistant:get-credentials')` returns loaded creds; `ipcMain.on('assistant:close')` closes window; tray menu has `🤖 Desk Assistant…` item
-
-### Architecture decision — renderer-side fetch
-The assistant renderer has `sandbox: false` so it can call `fetch` and use `SpeechRecognition` / `SpeechSynthesis` directly. The main process only provides credentials via IPC (`assistant:get-credentials`) — it does NOT proxy the stream. This keeps the streaming logic simple and in one place (`aideClient.js`).
-
-### Credential format (`~/.aide_creds/.env`)
-```
-AIDE_BASE_URL=https://your-aide-server.com
-AIDE_TOKEN=your-token-here
-```
-
-## Active Decisions
-- `YAW = Math.PI/2 - 0.45` — all characters must be side-profile (+X = walking direction)
-- Character switch during active animation: abort current sequence → re-enter `walkIn` with new character
-- Assistant window: `frame: false` (custom drag titlebar) + `alwaysOnTop: false` (normal window)
-- TTS: split into sentences for low-latency start; uses default system voice
-
 ## Next Steps
-- Multi-monitor support (one overlay per display)
-- In-app reminder editor UI
-- macOS packaging
-- README update with all characters + assistant feature
+- Multi-monitor support (single overlay on primary display only)
+- In-app reminder editor UI (currently JSON-file only)
+- macOS / Linux packaging
