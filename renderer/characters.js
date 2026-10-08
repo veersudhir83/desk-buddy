@@ -130,177 +130,199 @@ function buildAnimal(cfg) {
 // ---------------------------------------------------------------------------
 function buildRoboDog(cfg) {
   // ── Colour palette ──────────────────────────────────────────────────────
-  const C_BODY      = 0xe8eef5; // pearl-white chassis
-  const C_BODY2     = 0xc8d4e0; // slightly darker belly / underside
-  const C_DARK      = 0x1a2535; // dark navy trim / outlines
-  const C_JOINT     = 0x8ba0b8; // mid-grey joint ball
-  const C_FOOT      = 0x6a8090; // rubber foot pads
-  const C_EYE_SOCK  = 0x1a2535; // eye socket ring
-  const C_EYE_LENS  = 0x44aaff; // bright blue lens glow
-  const C_EYE_IRIS  = 0x2266dd; // deeper iris
-  const C_EYE_PUPIL = 0x0a1a44; // pupil
+  // Faithful to the reference: clean pearl-white chassis with grey joints,
+  // dark navy outlines, and a large bright-blue circular eye.
+  const C_WHITE     = 0xeef2f8; // pearl-white panels
+  const C_PANEL     = 0xd4dce8; // secondary panel, belly
+  const C_GREY      = 0x8fa4bc; // joint balls, neck ring
+  const C_DARK      = 0x18253a; // dark navy outline ring, nose
+  const C_FOOT      = 0x5a7488; // rubber foot pad
+  const C_EYE_RING  = 0x18253a; // eye socket surround
+  const C_EYE_LENS  = 0x44bbff; // bright blue lens (dominant feature)
+  const C_EYE_IRIS  = 0x1a66dd; // inner iris
+  const C_EYE_PUPIL = 0x060e22; // pupil
   const C_EYE_SPEC  = 0xffffff; // specular sparkle
-  const C_ANTENNA   = 0x334455; // antenna pole
-  const C_ANT_TIP   = 0x55ccff; // antenna glow tip
-  const C_EAR       = 0xc8d4e0; // ear flap
-  const C_EAR_INNER = 0x8ba0b8; // ear inner panel
-  const C_TAIL      = 0x8ba0b8; // tail segments
-  const C_TAIL_TIP  = 0xc8d4e0; // tail tip
+  const C_ANT_POLE  = 0x2c3e50; // antenna pole
+  const C_ANT_TIP   = 0x44ddff; // antenna glow tip — brighter than eye
+  const C_EAR       = 0xd4dce8; // ear flap
+  const C_EAR_IN    = 0x8fa4bc; // ear inner panel
+  const C_TAIL      = 0x8fa4bc; // tail segment
+  const C_TAIL_TIP  = 0xd4dce8; // tail tip
 
   const root = new THREE.Group();
   const rig  = new THREE.Group();
   root.add(rig);
 
-  // ── BODY ────────────────────────────────────────────────────────────────
-  // Big oval barrel body, smooth sphere-based
+  // ── BODY ─────────────────────────────────────────────────────────────────
+  // Horizontal barrel body; body group sits at waist height.
+  // +Z is toward viewer (face direction), ±X are the sides, -Z is the rear.
+  // This matches the reference: body length runs front(+Z) to rear(-Z).
   const body = new THREE.Group();
-  body.position.set(0, 0.70, 0);
+  body.position.set(0, 0.66, 0);
   rig.add(body);
 
-  // Main hull — wide flattened sphere (barrel shape)
-  body.add(meshP(SPHERE, C_BODY,  [0,  0.02, 0],     [0.55, 0.40, 0.75]));     // main barrel
-  body.add(meshP(SPHERE, C_BODY2, [0, -0.18, 0.05],  [0.44, 0.22, 0.60]));     // belly underside
-  body.add(meshP(SPHERE, C_BODY,  [0,  0.22, -0.10], [0.48, 0.20, 0.55]));     // back/rump dome
-  // Chest dome (front)
-  body.add(meshP(SPHERE, C_BODY,  [0,  0.08, 0.50],  [0.38, 0.30, 0.28]));     // chest bulge
-  // Side shoulder bulges
+  // Main hull — elongated oval barrel
+  body.add(meshP(SPHERE, C_WHITE, [0,  0.00,  0.00], [0.52, 0.38, 0.80])); // barrel
+  body.add(meshP(SPHERE, C_PANEL, [0, -0.16,  0.05], [0.42, 0.20, 0.70])); // belly underside
+  body.add(meshP(SPHERE, C_WHITE, [0,  0.18, -0.12], [0.46, 0.18, 0.56])); // rump dome
+
+  // Chest dome — front face (+Z) — slight forward bulge
+  body.add(meshP(SPHERE, C_WHITE, [0,  0.06,  0.52], [0.36, 0.28, 0.22]));
+
+  // Shoulder bumps — one each side, front half
   for (const sx of [-1, 1]) {
-    body.add(meshP(SPHERE, C_BODY,  [sx * 0.50, 0.10, 0.20], [0.18, 0.20, 0.30])); // shoulder dome
-    body.add(meshP(SPHERE, C_JOINT, [sx * 0.52, 0.10, 0.20], [0.12, 0.12, 0.12])); // shoulder ball
+    body.add(meshP(SPHERE, C_WHITE, [sx * 0.48,  0.08, 0.18], [0.16, 0.18, 0.28]));
+    body.add(meshP(SPHERE, C_GREY,  [sx * 0.50,  0.08, 0.18], [0.11, 0.11, 0.11])); // shoulder ball
+    // Hip bumps — rear
+    body.add(meshP(SPHERE, C_WHITE, [sx * 0.46, -0.02, -0.28], [0.16, 0.17, 0.25]));
+    body.add(meshP(SPHERE, C_GREY,  [sx * 0.48, -0.02, -0.28], [0.10, 0.10, 0.10])); // hip ball
   }
-  // Chest panel accent circle
-  body.add(meshP(SPHERE, C_JOINT, [0, 0.05, 0.54], [0.14, 0.14, 0.04]));       // chest disc
-  body.add(meshP(SPHERE, C_EYE_LENS, [0, 0.05, 0.56], [0.07, 0.07, 0.03]));    // chest blue gem
 
-  // ── NECK ─────────────────────────────────────────────────────────────────
-  // Connects top-front of body to head. Tilted forward along +Z.
+  // Chest accent — dark ring + blue gem (like reference)
+  body.add(meshP(SPHERE, C_DARK,     [0, 0.06, 0.55], [0.12, 0.12, 0.03]));
+  body.add(meshP(SPHERE, C_EYE_LENS, [0, 0.06, 0.57], [0.07, 0.07, 0.025]));
+
+  // ── NECK ──────────────────────────────────────────────────────────────────
+  // Rises slightly and forward from the chest top (+Z, +Y)
   const neck = new THREE.Group();
-  neck.position.set(0, 0.30, 0.52);
-  neck.rotation.x = -0.35;  // lean forward toward head
+  neck.position.set(0, 0.28, 0.48);
+  neck.rotation.x = -0.38;
   body.add(neck);
-  neck.add(meshP(CYL,    C_JOINT, [0, 0.12, 0], [0.13, 0.22, 0.13]));          // neck tube
-  neck.add(meshP(SPHERE, C_BODY,  [0, 0.24, 0], [0.18, 0.16, 0.18]));          // neck collar ball
+  neck.add(meshP(CYL,    C_GREY,  [0, 0.11, 0], [0.12, 0.20, 0.12])); // neck tube
+  neck.add(meshP(SPHERE, C_WHITE, [0, 0.22, 0], [0.16, 0.14, 0.16])); // collar sphere
 
-  // ── HEAD ────────────────────────────────────────────────────────────────
-  // No extra Y rotation — head faces the same direction as the body's +Z axis.
-  // The whole model is rotated by YAW (≈π/2) by the Character wrapper, which
-  // makes +Z face the screen. So the face naturally looks straight at the viewer.
+  // ── HEAD ──────────────────────────────────────────────────────────────────
+  // Sits on top of the neck, at the front of the body.
+  // Face features (eye, snout) are on the +Z face.
+  // YAW ≈ π/2 makes +Z face the viewer — do NOT add head.rotation.y.
   const head = new THREE.Group();
-  head.position.set(0, 0.44, 0.62);   // front of body along +Z
+  head.position.set(0, 0.42, 0.60);
   body.add(head);
 
-  // Main skull sphere — big and round
-  head.add(meshP(SPHERE, C_BODY,  [0,  0.06,  0],    [0.44, 0.42, 0.42]));    // skull dome
-  head.add(meshP(SPHERE, C_BODY2, [0, -0.12,  0.08], [0.34, 0.20, 0.28]));    // lower jaw / chin
+  // Skull — slightly flattened on the Z axis so it reads as a distinct head
+  head.add(meshP(SPHERE, C_WHITE, [0,  0.06, 0.00], [0.44, 0.42, 0.40])); // main skull
+  head.add(meshP(SPHERE, C_PANEL, [0, -0.10, 0.06], [0.34, 0.18, 0.30])); // chin/lower
 
-  // Snout / muzzle — protrudes forward in +Z
-  head.add(meshP(SPHERE, C_BODY2, [0, -0.06, 0.34],  [0.22, 0.17, 0.20]));    // muzzle ball
-  head.add(meshP(SPHERE, C_DARK,  [0, -0.02, 0.44],  [0.06, 0.04, 0.04]));    // nose tip
+  // ── SNOUT — small round muzzle bump protruding on +Z ─────────────────────
+  head.add(meshP(SPHERE, C_PANEL, [0, -0.07, 0.32], [0.20, 0.16, 0.18])); // muzzle
+  head.add(meshP(SPHERE, C_DARK,  [0, -0.03, 0.42], [0.055, 0.040, 0.040])); // nose
 
-  // ── EYE — large glowing mono-eye, centered on face ──────────────────────
-  head.add(meshP(SPHERE, C_EYE_SOCK,  [0,  0.10, 0.36],  [0.24, 0.24, 0.06])); // socket ring
-  head.add(meshP(SPHERE, C_EYE_LENS,  [0,  0.10, 0.378], [0.20, 0.20, 0.07])); // lens glow
-  head.add(meshP(SPHERE, C_EYE_IRIS,  [0,  0.10, 0.392], [0.13, 0.13, 0.05])); // iris
-  head.add(meshP(SPHERE, C_EYE_PUPIL, [0,  0.10, 0.402], [0.070,0.070,0.032]));// pupil
-  head.add(meshP(SPHERE, C_EYE_SPEC,  [ 0.07, 0.16, 0.414],[0.034,0.034,0.020]));// highlight 1
-  head.add(meshP(SPHERE, C_EYE_SPEC,  [-0.04, 0.13, 0.412],[0.018,0.018,0.014]));// highlight 2
+  // ── EYE — the dominant feature: large glowing blue circle ────────────────
+  // Concentric spheres: dark socket ring → bright blue lens → iris → pupil → sparkle
+  head.add(meshP(SPHERE, C_EYE_RING,  [0,  0.11, 0.335], [0.26, 0.26, 0.055])); // socket ring
+  head.add(meshP(SPHERE, C_EYE_LENS,  [0,  0.11, 0.352], [0.21, 0.21, 0.065])); // blue glow
+  head.add(meshP(SPHERE, C_EYE_IRIS,  [0,  0.11, 0.366], [0.14, 0.14, 0.048])); // iris
+  head.add(meshP(SPHERE, C_EYE_PUPIL, [0,  0.11, 0.376], [0.072,0.072,0.030])); // pupil
+  head.add(meshP(SPHERE, C_EYE_SPEC,  [ 0.07, 0.17, 0.387], [0.032,0.032,0.018])); // sparkle 1
+  head.add(meshP(SPHERE, C_EYE_SPEC,  [-0.04, 0.14, 0.385], [0.017,0.017,0.012])); // sparkle 2
 
-  // ── EARS — robot dog ear flaps on ±X sides of head ───────────────────────
+  // ── EARS — rounded rectangular flaps on ±X sides ──────────────────────────
+  const ears = [];
   for (const sx of [-1, 1]) {
     const ear = new THREE.Group();
-    ear.position.set(sx * 0.38, 0.26, 0.02);
-    ear.rotation.z = sx * 0.22;
+    ear.position.set(sx * 0.38, 0.24, 0.00);
+    ear.rotation.z = sx * 0.18;
     head.add(ear);
-    ear.add(meshP(SPHERE, C_EAR,       [0,  0.14, 0],   [0.16, 0.28, 0.08]));
-    ear.add(meshP(SPHERE, C_EAR_INNER, [0,  0.14, 0.03],[0.10, 0.20, 0.04]));
-    ear.add(meshP(SPHERE, C_JOINT,     [0,  0,    0],   [0.12, 0.12, 0.10]));
+    ear.add(meshP(SPHERE, C_EAR,   [0,  0.14, 0],    [0.15, 0.26, 0.08])); // outer
+    ear.add(meshP(SPHERE, C_EAR_IN,[0,  0.14, 0.025],[0.09, 0.18, 0.04])); // inner panel
+    ear.add(meshP(SPHERE, C_GREY,  [0,  0.00, 0],    [0.11, 0.11, 0.09])); // hinge ball
+    ears.push(ear);
   }
 
-  // ── ANTENNA ─────────────────────────────────────────────────────────────
+  // ── ANTENNA — off-centre on top of head, bright blue tip ─────────────────
   const antenna = new THREE.Group();
-  antenna.position.set(0.16, 0.46, -0.05);
+  antenna.position.set(0.14, 0.44, -0.06);
   head.add(antenna);
-  antenna.add(meshP(CYL,    C_ANTENNA, [0, 0.17, 0],  [0.022, 0.32, 0.022]));  // pole
-  antenna.add(meshP(SPHERE, C_ANT_TIP, [0, 0.34, 0],  [0.060, 0.060, 0.060])); // tip glow ball
-  // Ring band near base
-  antenna.add(meshP(CYL,    C_JOINT,   [0, 0.06, 0],  [0.034, 0.016, 0.034]));
+  antenna.add(meshP(CYL,    C_ANT_POLE, [0, 0.16, 0],  [0.020, 0.30, 0.020])); // pole
+  antenna.add(meshP(SPHERE, C_ANT_TIP,  [0, 0.32, 0],  [0.058, 0.058, 0.058])); // glow ball
+  antenna.add(meshP(CYL,    C_GREY,     [0, 0.05, 0],  [0.030, 0.014, 0.030])); // base ring
 
-  // ── LEGS ────────────────────────────────────────────────────────────────
-  // Slim round legs: hip sphere → upper cylinder → knee sphere → lower cylinder → foot sphere
+  // ── LEGS ──────────────────────────────────────────────────────────────────
+  // Reference: 4 thin legs at the 4 corners of the body; each leg =
+  //   hip-ball → upper-tube → knee-ball → lower-tube → foot-pad
+  // Front pair attach at +Z; rear pair at -Z.
+  // Walk uses a diagonal gait (front-L + rear-R move together).
   const legDefs = [
-    { x: -0.42, z:  0.38, phase: 0 },          // front-left
-    { x:  0.42, z:  0.38, phase: Math.PI },     // front-right
-    { x: -0.42, z: -0.38, phase: Math.PI },     // rear-left
-    { x:  0.42, z: -0.38, phase: 0 },           // rear-right
+    { x: -0.40, z:  0.36, phase: 0          }, // front-left  (diagonal A)
+    { x:  0.40, z:  0.36, phase: Math.PI    }, // front-right (diagonal B)
+    { x: -0.40, z: -0.32, phase: Math.PI    }, // rear-left   (diagonal B)
+    { x:  0.40, z: -0.32, phase: 0          }, // rear-right  (diagonal A)
   ];
   const legs = [];
 
   for (const def of legDefs) {
-    const hip = new THREE.Group();
-    hip.position.set(def.x, -0.28, def.z);
-    body.add(hip);
+    // Hip attaches to body underside
+    const hipGroup = new THREE.Group();
+    hipGroup.position.set(def.x, -0.26, def.z);
+    body.add(hipGroup);
+    hipGroup.add(meshP(SPHERE, C_GREY, [0, 0, 0], [0.13, 0.13, 0.13])); // hip ball
 
-    // Hip ball
-    hip.add(meshP(SPHERE, C_JOINT, [0, 0, 0], [0.13, 0.13, 0.13]));
-
-    // Upper leg
+    // Upper leg — swings on X axis (fore/aft)
     const upperLeg = new THREE.Group();
-    hip.add(upperLeg);
-    upperLeg.add(meshP(CYL,    C_BODY,  [0, -0.17, 0], [0.10, 0.32, 0.10]));  // thigh tube
-    upperLeg.add(meshP(SPHERE, C_BODY,  [0, -0.04, 0], [0.12, 0.12, 0.12]));  // upper cap sphere
-    upperLeg.add(meshP(SPHERE, C_JOINT, [0, -0.32, 0], [0.10, 0.10, 0.10]));  // knee ball
+    hipGroup.add(upperLeg);
+    upperLeg.add(meshP(CYL,    C_WHITE, [0, -0.16, 0], [0.09, 0.30, 0.09])); // thigh
+    upperLeg.add(meshP(SPHERE, C_GREY,  [0, -0.30, 0], [0.10, 0.10, 0.10])); // knee ball
 
-    // Lower leg
+    // Lower leg — bends at knee (X axis)
     const knee = new THREE.Group();
-    knee.position.set(0, -0.32, 0);
+    knee.position.set(0, -0.30, 0);
     upperLeg.add(knee);
+
     const lowerLeg = new THREE.Group();
+    lowerLeg.rotation.x = 0.30; // slight default bend
     knee.add(lowerLeg);
-    lowerLeg.add(meshP(CYL,    C_BODY2, [0, -0.14, 0.02], [0.08, 0.26, 0.08])); // shin tube
-    lowerLeg.add(meshP(SPHERE, C_BODY2, [0, -0.03, 0.01], [0.09, 0.09, 0.09])); // lower cap
+    lowerLeg.add(meshP(CYL,    C_PANEL, [0, -0.13, 0.015], [0.075, 0.24, 0.075])); // shin
+    lowerLeg.add(meshP(SPHERE, C_GREY,  [0, -0.24, 0.010], [0.082, 0.082, 0.082])); // ankle ball
 
-    // Foot
+    // Foot / pad
     const foot = new THREE.Group();
-    foot.position.set(0, -0.26, 0.02);
+    foot.position.set(0, -0.24, 0.015);
     lowerLeg.add(foot);
-    foot.add(meshP(SPHERE, C_FOOT,  [0, -0.04, 0.04], [0.14, 0.10, 0.18]));    // main pad
-    foot.add(meshP(SPHERE, C_DARK,  [0,  0.00, 0.11], [0.06, 0.05, 0.04]));    // toe
+    foot.add(meshP(SPHERE, C_FOOT, [0, -0.045, 0.040], [0.13, 0.09, 0.17])); // main pad
+    foot.add(meshP(SPHERE, C_DARK, [0,  0.000, 0.105], [0.055, 0.045, 0.040])); // toe nub
 
-    legs.push({ hip, upperLeg, knee, lowerLeg, foot, phase: def.phase });
+    legs.push({ hipGroup, upperLeg, lowerLeg, foot, phase: def.phase });
   }
 
-  // ── TAIL ─────────────────────────────────────────────────────────────────
-  // 3-segment rounded tail rising upward
+  // ── TAIL ──────────────────────────────────────────────────────────────────
+  // 3 segments chain, curling upward and slightly forward from the rump.
+  // Wag is Z-axis (side-to-side), with phase delay between segments.
   const tailRoot = new THREE.Group();
-  tailRoot.position.set(0, 0.12, -0.68);
+  tailRoot.position.set(0, 0.10, -0.70);
+  tailRoot.rotation.x = -0.65; // initial upward lean
   body.add(tailRoot);
-  tailRoot.rotation.x = -0.7;
 
   const tailSeg1 = new THREE.Group();
   tailRoot.add(tailSeg1);
-  tailSeg1.add(meshP(CYL,    C_TAIL,     [0, 0.13, 0], [0.09, 0.24, 0.09]));
-  tailSeg1.add(meshP(SPHERE, C_JOINT,    [0, 0.26, 0], [0.10, 0.10, 0.10]));
+  tailSeg1.add(meshP(CYL,    C_TAIL,     [0, 0.12, 0], [0.085, 0.22, 0.085]));
+  tailSeg1.add(meshP(SPHERE, C_GREY,     [0, 0.24, 0], [0.095, 0.095, 0.095]));
+
+  const pivot1 = new THREE.Group();
+  pivot1.position.set(0, 0.24, 0);
+  tailSeg1.add(pivot1);
 
   const tailSeg2 = new THREE.Group();
-  tailSeg2.position.set(0, 0.26, 0);
-  tailSeg2.rotation.x = -0.50;
-  tailSeg1.add(tailSeg2);
-  tailSeg2.add(meshP(CYL,    C_TAIL,     [0, 0.11, 0], [0.075, 0.20, 0.075]));
-  tailSeg2.add(meshP(SPHERE, C_JOINT,    [0, 0.22, 0], [0.085, 0.085, 0.085]));
+  tailSeg2.rotation.x = -0.52;
+  pivot1.add(tailSeg2);
+  tailSeg2.add(meshP(CYL,    C_TAIL,     [0, 0.10, 0], [0.070, 0.18, 0.070]));
+  tailSeg2.add(meshP(SPHERE, C_GREY,     [0, 0.20, 0], [0.080, 0.080, 0.080]));
+
+  const pivot2 = new THREE.Group();
+  pivot2.position.set(0, 0.20, 0);
+  tailSeg2.add(pivot2);
 
   const tailSeg3 = new THREE.Group();
-  tailSeg3.position.set(0, 0.22, 0);
-  tailSeg3.rotation.x = -0.40;
-  tailSeg2.add(tailSeg3);
-  tailSeg3.add(meshP(CYL,    C_TAIL,     [0, 0.08, 0], [0.058, 0.14, 0.058]));
-  tailSeg3.add(meshP(SPHERE, C_TAIL_TIP, [0, 0.16, 0], [0.080, 0.080, 0.080]));
+  tailSeg3.rotation.x = -0.42;
+  pivot2.add(tailSeg3);
+  tailSeg3.add(meshP(CYL,    C_TAIL,     [0, 0.07, 0], [0.054, 0.13, 0.054]));
+  tailSeg3.add(meshP(SPHERE, C_TAIL_TIP, [0, 0.15, 0], [0.076, 0.076, 0.076]));
 
-  // ── SCALE ────────────────────────────────────────────────────────────────
+  // ── SCALE ─────────────────────────────────────────────────────────────────
   const box3 = new THREE.Box3().setFromObject(root);
   root.scale.setScalar(cfg.height / (box3.max.y - box3.min.y));
 
   // ── ANIMATION ─────────────────────────────────────────────────────────────
-  let t = 0;
+  let t    = 0;
   let anim = 'idle';
   let hop  = 0;
 
@@ -313,59 +335,72 @@ function buildRoboDog(cfg) {
       const walking = anim === 'walk';
       const talking = anim === 'talk';
       const k = Math.min(1, dt * 10);
+      const freq = 8.5; // walk cycle frequency
 
-      // ── Leg animation ───────────────────────────────────────────────────
+      // ── Leg swing — diagonal gait (like a real trotting dog) ─────────────
       for (const leg of legs) {
-        const s = Math.sin(t * 9.0 + leg.phase);
+        const s = Math.sin(t * freq + leg.phase);
         if (walking) {
-          const hipTarget  = s * 0.55;
-          leg.upperLeg.rotation.x += (hipTarget - leg.upperLeg.rotation.x) * k;
-          const kneeTarget = 0.50 + s * 0.40;
-          leg.lowerLeg.rotation.x += (kneeTarget - leg.lowerLeg.rotation.x) * k;
-          leg.foot.rotation.x     += (-kneeTarget * 0.30 - leg.foot.rotation.x) * k;
+          // Thigh swings fore-aft
+          leg.upperLeg.rotation.x  += (s * 0.52 - leg.upperLeg.rotation.x)  * k;
+          // Shin bends more on backstroke
+          const shinBend = 0.30 + Math.max(0, -s) * 0.42;
+          leg.lowerLeg.rotation.x  += (shinBend - leg.lowerLeg.rotation.x)   * k;
+          // Foot levels itself out
+          leg.foot.rotation.x      += (-shinBend * 0.28 - leg.foot.rotation.x) * k;
         } else {
-          leg.upperLeg.rotation.x += (0    - leg.upperLeg.rotation.x) * k;
-          leg.lowerLeg.rotation.x += (0.35 - leg.lowerLeg.rotation.x) * k;
-          leg.foot.rotation.x     += (0    - leg.foot.rotation.x)     * k;
+          leg.upperLeg.rotation.x  += (0    - leg.upperLeg.rotation.x)  * k;
+          leg.lowerLeg.rotation.x  += (0.30 - leg.lowerLeg.rotation.x)  * k;
+          leg.foot.rotation.x      += (0    - leg.foot.rotation.x)       * k;
         }
       }
 
-      // ── Tail wag (side-to-side Z) ─────────────────────────────────────
-      const wagSpeed  = walking ? 8.0 : (talking ? 5.5 : 3.0);
-      const wagAmt    = walking ? 0.55 : (talking ? 0.70 : 0.38);
-      tailRoot.rotation.z = Math.sin(t * wagSpeed) * wagAmt;
-      tailSeg2.rotation.z = Math.sin(t * wagSpeed + 0.9) * 0.28;
-      tailSeg3.rotation.z = Math.sin(t * wagSpeed + 1.8) * 0.22;
+      // ── Tail wag — cascading side-to-side Z ──────────────────────────────
+      const wagSpeed = walking ? 9.0 : (talking ? 6.0 : 2.8);
+      const wagAmp   = walking ? 0.58 : (talking ? 0.72 : 0.36);
+      tailRoot.rotation.z  = Math.sin(t * wagSpeed)           * wagAmp;
+      tailSeg2.rotation.z  = Math.sin(t * wagSpeed + 0.85)    * 0.30;
+      tailSeg3.rotation.z  = Math.sin(t * wagSpeed + 1.70)    * 0.22;
 
-      // ── Body bounce / sway ───────────────────────────────────────────────
+      // ── Body bounce / rock ────────────────────────────────────────────────
       let yOff = 0;
       if (walking) {
-        yOff = Math.abs(Math.sin(t * 9.0)) * 0.05;
-        body.rotation.z = Math.sin(t * 4.5) * 0.022;
+        yOff = Math.abs(Math.sin(t * freq)) * 0.048;
+        body.rotation.z = Math.sin(t * freq * 0.5) * 0.020;
       } else {
-        yOff = Math.sin(t * 2.0) * 0.016;
+        yOff = Math.sin(t * 1.9) * 0.014;
         body.rotation.z = 0;
       }
       if (hop > 0) {
         hop -= dt;
-        yOff += Math.sin((1 - hop / 0.50) * Math.PI) * 0.36;
+        yOff += Math.sin((1 - hop / 0.50) * Math.PI) * 0.38;
       }
       rig.position.y = yOff;
 
-      // ── Head animation ───────────────────────────────────────────────────
+      // ── Head nod / tilt ───────────────────────────────────────────────────
       if (talking) {
-        head.rotation.x = Math.sin(t * 11) * 0.11;
-        head.rotation.z = Math.sin(t * 7)  * 0.05;
+        head.rotation.x = Math.sin(t * 11)  * 0.12;
+        head.rotation.z = Math.sin(t * 7.5) * 0.05;
       } else if (walking) {
-        head.rotation.x = Math.sin(t * 9.0) * 0.06;
+        head.rotation.x = Math.sin(t * freq) * 0.058;
         head.rotation.z = 0;
       } else {
-        head.rotation.x = Math.sin(t * 1.3) * 0.04;
-        head.rotation.z = Math.sin(t * 0.8) * 0.02;
+        // Idle — gentle alert look-around
+        head.rotation.x = Math.sin(t * 1.4) * 0.040;
+        head.rotation.z = Math.sin(t * 0.9) * 0.022;
       }
 
-      // ── Antenna bob ──────────────────────────────────────────────────────
-      antenna.rotation.z = Math.sin(t * 4.0) * 0.14;
+      // ── Antenna spring bob ────────────────────────────────────────────────
+      antenna.rotation.z = Math.sin(t * 4.2 + 0.3) * 0.16;
+      antenna.rotation.x = Math.sin(t * 3.1) * 0.06;
+
+      // ── Ear flick (idle/talk) ─────────────────────────────────────────────
+      for (let i = 0; i < ears.length; i++) {
+        const flick = talking
+          ? Math.sin(t * 8.0 + i * Math.PI) * 0.08
+          : Math.sin(t * 1.2 + i * Math.PI) * 0.04;
+        ears[i].rotation.z = (i === 0 ? -1 : 1) * (0.18 + flick);
+      }
     }
   };
 }
@@ -1470,26 +1505,34 @@ function buildPythonSnake(cfg) {
 }
 
 // ---------------------------------------------------------------------------
-// Monkey — grinning chimp with huge teeth, big round ears, long arms, curling tail
+// Monkey — grinning chimp based on reference image.
 //
-// Orientation: SIDE-PROFILE (+X = forward/walking). The head faces +X so YAW
-// presents the massive grin straight at the viewer.
+// Orientation: face is on +Z axis (same as RoboDog). YAW makes +Z face the
+// viewer, so the grin is front-on. Body walks in side-profile (±X).
 //
-// Shape language: oversized cartoon proportions — round skull, wide flat muzzle,
-//   enormous toothy grin, plate-like ears on ±Z sides, fluffy brown fur.
-//   Arms reach the ground for a knuckle-walk. Long segmented tail curls up.
+// Key features from reference:
+//   • Enormous round head (chibi) with huge wide grin (bottom 40% of face)
+//   • Full row of large human-like teeth, upper + lower
+//   • Small squinting happy eyes set high
+//   • Big round plate ears on ±X sides
+//   • Short compact upright body, light belly patch
+//   • One arm pointing forward (+Z) — the "pointing at you" pose
+//   • Long curling tail behind
 // ---------------------------------------------------------------------------
 function buildMonkey(cfg) {
-  const C_FUR      = 0x8b6914; // warm brown fur
-  const C_FUR2     = 0xa07820; // lighter highlight fur
-  const C_BELLY    = 0xd4aa70; // pale belly / face centre
-  const C_SKIN     = 0xd4906a; // bare skin — ears, palms, muzzle
-  const C_MUZZLE   = 0xe0b08a; // lighter muzzle dome
+  // ── Colour palette ──────────────────────────────────────────────────────
+  const C_FUR      = 0x9a7040; // warm medium brown fur
+  const C_FUR_D    = 0x6b4a20; // dark brown — top of head, back
+  const C_FUR_L    = 0xc4955a; // lighter highlight — cheeks, crown
+  const C_BELLY    = 0xe8c990; // pale cream belly / inner face
+  const C_SKIN     = 0xd4906a; // bare skin tone — ears inside, muzzle
+  const C_MUZZLE   = 0xf0c090; // very light muzzle face area
   const C_EYE_W    = 0xffffff;
-  const C_EYE      = 0x5c3a10; // brown iris
-  const C_PUPIL    = 0x111111;
-  const C_TOOTH    = 0xf8f0d0; // slightly off-white teeth
-  const C_GUM      = 0xd47070; // pink gums / inner mouth
+  const C_EYE      = 0x6b3a0a; // warm brown iris
+  const C_PUPIL    = 0x0a0a0a;
+  const C_TOOTH    = 0xf5f0d8; // slightly cream teeth
+  const C_GUM_U    = 0xc06060; // upper gum / inner top of mouth
+  const C_GUM_L    = 0xd07070; // lower gum / inner bottom
   const C_DARK     = 0x3a2008; // nostril / brow shadow
   const C_TAIL     = 0x8b6914; // tail same as fur
 
@@ -1507,7 +1550,7 @@ function buildMonkey(cfg) {
   body.add(mesh(SPHERE, C_BELLY, [0, -0.04, 0.18], [0.26, 0.36, 0.18])); // pale belly patch
   // Shoulder humps
   for (const sx of [-1, 1]) {
-    body.add(mesh(SPHERE, C_FUR2, [0, 0.20, sx * 0.28], [0.20, 0.18, 0.16])); // shoulder hump
+    body.add(mesh(SPHERE, C_FUR_D, [0, 0.20, sx * 0.28], [0.20, 0.18, 0.16])); // shoulder hump
   }
 
   // ── NECK ──────────────────────────────────────────────────────────────────
@@ -1524,7 +1567,7 @@ function buildMonkey(cfg) {
 
   // Big round skull
   head.add(mesh(SPHERE, C_FUR,   [0,  0.08,  0],    [0.46, 0.44, 0.44])); // skull dome
-  head.add(mesh(SPHERE, C_FUR2,  [0,  0.22, -0.04], [0.30, 0.14, 0.30])); // top fur tuft
+  head.add(mesh(SPHERE, C_FUR_D,  [0,  0.22, -0.04], [0.30, 0.14, 0.30])); // top fur tuft
 
   // Face disc (flatter, lighter skin area in front +Z of head group →
   // after YAW this becomes the viewer-facing +X)
@@ -1543,7 +1586,7 @@ function buildMonkey(cfg) {
 
   // ── GRIN — inner mouth + row of teeth ─────────────────────────────────────
   // Inner mouth cavity
-  muzzle.add(mesh(SPHERE, C_GUM, [0, -0.04, 0.14], [0.24, 0.08, 0.12])); // gum base
+  muzzle.add(mesh(SPHERE, C_GUM_U, [0, -0.04, 0.14], [0.24, 0.08, 0.12])); // gum base
 
   // Upper teeth row (5 teeth, evenly spaced in Z axis = left-right when viewed after YAW)
   const upperTeeth = new THREE.Group();
@@ -1673,7 +1716,7 @@ function buildMonkey(cfg) {
     seg.rotation.x = sd.rx;
     parent.add(seg);
     seg.add(mesh(SPHERE, C_TAIL, [0, sd.len / 2, 0], [sd.r, sd.len, sd.r]));
-    seg.add(mesh(SPHERE, C_FUR2, [0, sd.len, 0], [sd.r * 1.2, sd.r * 1.2, sd.r * 1.2]));
+    seg.add(mesh(SPHERE, C_FUR_D, [0, sd.len, 0], [sd.r * 1.2, sd.r * 1.2, sd.r * 1.2]));
     tailSegs.push(seg);
     const pivot = new THREE.Group();
     pivot.position.set(0, sd.len, 0);
