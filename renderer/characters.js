@@ -451,22 +451,22 @@ function buildCoffeeCup(cfg) {
   body.add(meshP(SPHERE, C_MUG,    [ 0.08, 0.32,  0.08], [0.05, 0.03, 0.05])); // swirl dot
   body.add(meshP(SPHERE, C_MUG,    [-0.06, 0.32, -0.06], [0.04, 0.03, 0.04])); // swirl dot
 
-  // Handle — on the -X side (trailing when walking +X)
+  // Handle — on the -Z side (back, away from viewer when front-facing)
   const handle = new THREE.Group();
-  handle.position.set(-0.42, 0.02, 0);
+  handle.position.set(0, 0.02, -0.42);
   body.add(handle);
   handle.add(meshP(CYL,    C_HANDLE, [0,  0.14, 0], [0.055, 0.26, 0.055]));
   handle.add(meshP(CYL,    C_HANDLE, [0, -0.12, 0], [0.055, 0.20, 0.055]));
   handle.add(meshP(SPHERE, C_HANDLE, [0,  0.26, 0], [0.07, 0.07, 0.07]));
   handle.add(meshP(SPHERE, C_HANDLE, [0, -0.22, 0], [0.07, 0.07, 0.07]));
 
-  // ── FACE — eyes and mouth on the +X face ──────────────────────
-  // +X face: x ≈ +0.38 radius of cylinder
-  body.add(meshP(SPHERE, C_EYES,  [0.38, 0.08,  0.10], [0.040, 0.040, 0.028])); // left eye
-  body.add(meshP(SPHERE, C_EYES,  [0.38, 0.08, -0.10], [0.040, 0.040, 0.028])); // right eye
-  body.add(meshP(SPHERE, C_MOUTH, [0.39, -0.04,  0.00], [0.060, 0.026, 0.020])); // mouth mid
-  body.add(meshP(SPHERE, C_MOUTH, [0.38, -0.01,  0.07], [0.026, 0.022, 0.018])); // mouth corner L
-  body.add(meshP(SPHERE, C_MOUTH, [0.38, -0.01, -0.07], [0.026, 0.022, 0.018])); // mouth corner R
+  // ── FACE — eyes and mouth on the +Z face (toward viewer) ──────
+  // +Z face: z ≈ +0.38 radius of cylinder
+  body.add(meshP(SPHERE, C_EYES,  [-0.10, 0.08, 0.38], [0.040, 0.040, 0.028])); // left eye
+  body.add(meshP(SPHERE, C_EYES,  [ 0.10, 0.08, 0.38], [0.040, 0.040, 0.028])); // right eye
+  body.add(meshP(SPHERE, C_MOUTH, [ 0.00, -0.04, 0.39], [0.060, 0.026, 0.020])); // mouth mid
+  body.add(meshP(SPHERE, C_MOUTH, [-0.07, -0.01, 0.38], [0.026, 0.022, 0.018])); // mouth corner L
+  body.add(meshP(SPHERE, C_MOUTH, [ 0.07, -0.01, 0.38], [0.026, 0.022, 0.018])); // mouth corner R
 
   // ── STEAM WISPS rising from top ──────────────────────────────
   const steam = [];
@@ -487,6 +487,7 @@ function buildCoffeeCup(cfg) {
   let t = 0; let anim = 'idle'; let hop = 0;
   return {
     object: root,
+    frontFacing: true,
     play(name) { anim = name; },
     poke()     { hop = 0.45; },
     update(dt) {
@@ -494,8 +495,18 @@ function buildCoffeeCup(cfg) {
       const walking = anim === 'walk';
       const talking = anim === 'talk';
 
-      // Liquid slosh — tilt body in walk direction (X-axis tilt)
-      body.rotation.z = Math.sin(t * (walking ? 10 : 1.5)) * (walking ? 0.12 : 0.03);
+      // Liquid slosh — front-facing: rotation.x = forward/back lean (walk bob)
+      // rotation.z = side sway (idle/talk)
+      if (walking) {
+        body.rotation.x = Math.sin(t * 10) * 0.10;  // walk lean
+        body.rotation.z = 0;
+      } else if (talking) {
+        body.rotation.x = Math.sin(t * 12) * 0.08;  // nod (forward/back)
+        body.rotation.z = Math.sin(t * 2.2) * 0.015; // gentle side sway
+      } else {
+        body.rotation.x = Math.sin(t * 8.5) * 0.012; // caffeinated idle jitter
+        body.rotation.z = Math.sin(t * 2.2) * 0.015; // gentle side sway
+      }
 
       // Steam wisps oscillate
       for (let i = 0; i < steam.length; i++) {
@@ -510,15 +521,6 @@ function buildCoffeeCup(cfg) {
         : Math.sin(t * 1.8) * 0.012;
       if (hop > 0) { hop -= dt; yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.35; }
       rig.position.y = yOff;
-
-      // Jitter X when idle (caffeinated!), nod during talk
-      if (talking) {
-        body.rotation.x = Math.sin(t * 12) * 0.08;
-      } else if (!walking) {
-        body.rotation.x = Math.sin(t * 8.5) * 0.012;
-      } else {
-        body.rotation.x = 0;
-      }
     }
   };
 }
@@ -1104,9 +1106,9 @@ function buildMrBean(cfg) {
   head.position.set(0, 0.50, 0.06);
   body.add(head);
 
-  // Skull — tall oval, Z-scale 0.32 so front face at z ≈ +0.32
-  head.add(meshP(SPHERE, C_SKIN, [0,  0.10,  0.02], [0.26, 0.36, 0.32]));
-  head.add(meshP(SPHERE, C_SKIN, [0, -0.06,  0.08], [0.18, 0.16, 0.24])); // chin juts forward
+  // Skull — tall oval, Z-scale 0.34 so front face at z ≈ +0.34
+  head.add(meshP(SPHERE, C_SKIN, [0,  0.10,  0.02], [0.26, 0.36, 0.34]));
+  head.add(meshP(SPHERE, C_SKIN, [0, -0.06,  0.08], [0.18, 0.16, 0.26])); // chin juts forward
 
   // Hair — very dark, thick quiff swept forward
   head.add(meshP(SPHERE, C_HAIR, [0,  0.34,  0.04], [0.22, 0.10, 0.22]));
@@ -1115,59 +1117,62 @@ function buildMrBean(cfg) {
   head.add(meshP(SPHERE, C_HAIR, [0,  0.26, -0.14], [0.18, 0.055, 0.16]));
 
   // Face disc — lighter flat circle on the forward face surface
-  head.add(meshP(SPHERE, C_SKIN, [0,  0.06,  0.28], [0.22, 0.30, 0.10]));
+  head.add(meshP(SPHERE, C_SKIN, [0,  0.06,  0.30], [0.22, 0.30, 0.10]));
 
-  // ── EYES — layered spheres protruding forward (RoboDog style) ─────────
-  // sz = ±1 gives left/right eye (±Z = ±left/right after YAW)
-  // Base z of each eye = sz * 0.13 (lateral offset)
-  // Forward protrusion stacks: socket at z+0.26, white at z+0.30, iris at z+0.34
+  // ── EARS — on ±X extremes (left/right for front-facing character) ─────
+  for (const sx of [-1, 1]) {
+    const ear = new THREE.Group();
+    ear.position.set(sx * 0.24, 0.08, 0.04);
+    head.add(ear);
+    ear.add(meshP(SPHERE, C_SKIN,   [0, 0, 0],          [0.030, 0.076, 0.050]));
+    ear.add(meshP(SPHERE, C_SKIN_D, [sx * 0.018, 0, 0], [0.018, 0.052, 0.034]));
+  }
+
+  // ── EYES — layered spheres, X-axis left/right separation ─────────────
+  // Front-facing: sx = ±1 separates eyes along X (left/right as viewer sees)
+  // Eyes protrude in Z. Eye centres at (sx * 0.10, 0.12, 0.27..0.34)
   const brows = [];
-  for (const sz of [-1, 1]) {
-    const ez = sz * 0.13; // lateral centre of this eye
-    // Dark socket ring (gives definition)
-    head.add(meshP(SPHERE, C_BROW,   [0, 0.12, ez + 0.255], [0.112, 0.108, 0.044]));
+  for (const sx of [-1, 1]) {
+    const ex = sx * 0.10; // lateral (left/right) offset
+    // Dark socket ring
+    head.add(meshP(SPHERE, C_BROW,   [ex, 0.12, 0.268], [0.044, 0.108, 0.112]));
     // White sclera
-    head.add(meshP(SPHERE, C_EYE_W,  [0, 0.12, ez + 0.278], [0.098, 0.094, 0.050]));
+    head.add(meshP(SPHERE, C_EYE_W,  [ex, 0.12, 0.292], [0.050, 0.094, 0.098]));
     // Warm brown iris
-    head.add(meshP(SPHERE, C_EYE,    [0, 0.12, ez + 0.296], [0.062, 0.066, 0.036]));
+    head.add(meshP(SPHERE, C_EYE,    [ex, 0.12, 0.312], [0.036, 0.066, 0.062]));
     // Pupil
-    head.add(meshP(SPHERE, C_PUPIL,  [0, 0.12, ez + 0.310], [0.032, 0.034, 0.022]));
+    head.add(meshP(SPHERE, C_PUPIL,  [ex, 0.12, 0.328], [0.022, 0.034, 0.032]));
     // Sparkle
-    head.add(meshP(SPHERE, 0xffffff, [0, 0.136,ez + 0.318], [0.013, 0.013, 0.009]));
+    head.add(meshP(SPHERE, 0xffffff, [ex + sx * 0.010, 0.136, 0.336], [0.009, 0.013, 0.013]));
 
     // ── Brow — very thick, almost black, arched ─────────────────────
     const brow = new THREE.Group();
-    brow.position.set(0, 0.228, ez + 0.25);
+    brow.position.set(ex, 0.228, 0.26);
     head.add(brow);
-    brow.add(meshP(SPHERE, C_BROW, [0, 0, 0], [0.112, 0.034, 0.084])); // main bar
-    brow.add(meshP(SPHERE, C_BROW, [0, 0.009, sz > 0 ? 0.05 : -0.05], [0.050, 0.026, 0.036])); // arch
+    brow.add(meshP(SPHERE, C_BROW, [0, 0, 0], [0.084, 0.034, 0.112])); // main bar (wider in Z now)
+    brow.add(meshP(SPHERE, C_BROW, [sx * 0.034, 0.009, 0.040], [0.036, 0.026, 0.050])); // arch end
     brows.push(brow);
   }
 
   // ── NOSE — long straight bridge, prominent bulbous tip ───────────────
-  head.add(meshP(SPHERE, C_SKIN,   [0,  0.085, 0.28], [0.050, 0.110, 0.046])); // bridge
-  head.add(meshP(SPHERE, C_SKIN,   [0,  0.010, 0.35], [0.064, 0.062, 0.060])); // tip
-  head.add(meshP(SPHERE, C_SKIN,   [0, -0.010, 0.33], [0.070, 0.042, 0.054])); // lower nose
-  head.add(meshP(SPHERE, C_SKIN_D, [0, -0.030, 0.33], [0.018, 0.012, 0.012])); // nostril dimple
+  // Centre on X=0, protrudes in Z
+  head.add(meshP(SPHERE, C_SKIN,   [0,  0.085, 0.30], [0.046, 0.110, 0.050])); // bridge
+  head.add(meshP(SPHERE, C_SKIN,   [0,  0.010, 0.37], [0.060, 0.062, 0.064])); // tip
+  head.add(meshP(SPHERE, C_SKIN,   [0, -0.010, 0.35], [0.054, 0.042, 0.070])); // lower nose
+  // Nostrils — left/right on X
+  head.add(meshP(SPHERE, C_SKIN_D, [-0.022, -0.026, 0.352], [0.012, 0.012, 0.018])); // L nostril
+  head.add(meshP(SPHERE, C_SKIN_D, [ 0.022, -0.026, 0.352], [0.012, 0.012, 0.018])); // R nostril
 
   // ── MOUTH — thin pursed lips, Bean sardonic expression ───────────────
+  // X=0 centre, protrudes in Z, lip width spans ±X
   const mouthGroup = new THREE.Group();
-  mouthGroup.position.set(0, -0.060, 0.27);
+  mouthGroup.position.set(0, -0.060, 0.29);
   head.add(mouthGroup);
   mouthGroup.add(meshP(SPHERE, C_MOUTH, [0,  0.008, 0.02], [0.096, 0.022, 0.026])); // upper lip
   mouthGroup.add(meshP(SPHERE, C_MOUTH, [0, -0.018, 0.018],[0.082, 0.020, 0.023])); // lower lip
-  // corners — downward quirk (slightly asymmetric)
-  mouthGroup.add(meshP(SPHERE, C_MOUTH, [0, -0.006,  0.068],[0.020, 0.016, 0.016]));
-  mouthGroup.add(meshP(SPHERE, C_MOUTH, [0, -0.010, -0.030],[0.020, 0.016, 0.016]));
-
-  // ── EARS — on ±Z extremes ────────────────────────────────────────────
-  for (const sz of [-1, 1]) {
-    const ear = new THREE.Group();
-    ear.position.set(0, 0.08, sz * 0.30);
-    head.add(ear);
-    ear.add(meshP(SPHERE, C_SKIN,   [0, 0, 0],         [0.050, 0.076, 0.030]));
-    ear.add(meshP(SPHERE, C_SKIN_D, [0, 0, sz * 0.018],[0.034, 0.052, 0.018]));
-  }
+  // corners — downward quirk (±X for corners, slightly asymmetric)
+  mouthGroup.add(meshP(SPHERE, C_MOUTH, [-0.048, -0.006, 0.010],[0.016, 0.016, 0.020])); // L corner
+  mouthGroup.add(meshP(SPHERE, C_MOUTH, [ 0.052, -0.010, 0.008],[0.016, 0.016, 0.020])); // R corner
 
   // ── SCALE ────────────────────────────────────────────────────────────
   const box3 = new THREE.Box3().setFromObject(root);
@@ -1178,6 +1183,7 @@ function buildMrBean(cfg) {
 
   return {
     object: root,
+    frontFacing: true,
     play(name) { anim = name; },
     poke()     { hop = 0.45; },
     update(dt) {
@@ -1247,6 +1253,258 @@ function buildMrBean(cfg) {
 }
 
 // ---------------------------------------------------------------------------
+// Hoodie Kid — Pixar-style cartoon boy
+//
+// Reference: large round cream head (like a smiley emoji), minimalist face
+//   (two dot eyes, curved smile, small triangle nose), short dark hair,
+//   bright yellow/orange hoodie, dark slim jeans, white sneakers, backpack.
+//
+// Orientation — same convention as all other characters:
+//   +X = walking direction, +Y = up, +Z = toward viewer.
+//   Legs:  front at +X, rear at −X.
+//   Arms:  front shoulder at +X, rear shoulder at −X.
+//   Face:  all features on +Z face, eyes at sz * 0.11 (left/right).
+//   Shoes: toe cap elongated along +X.
+// ---------------------------------------------------------------------------
+function buildHoodieKid(cfg) {
+  // ── Colour palette ────────────────────────────────────────────────────
+  const C_SKIN      = 0xf5ddb0; // warm cream skin (the big round head)
+  const C_HAIR      = 0x2a1505; // very dark brown hair
+  const C_HOODIE    = 0x1a5fb4; // bright blue hoodie
+  const C_HOODIE_D  = 0x0f3d7a; // hoodie shadow / seams
+  const C_JEANS     = 0x1e2240; // dark navy slim jeans
+  const C_SHOE_W    = 0xf0ede8; // white sneaker body
+  const C_SHOE_D    = 0x3a2e1e; // dark sole / lace accent
+  const C_SHOE_TOE  = 0xe8e4de; // toe cap
+  const C_PACK      = 0x2a3a4a; // dark backpack
+  const C_PACK_STR  = 0x1a2530; // backpack straps
+  const C_EYE       = 0x0a0a0a; // simple black dot eyes
+  const C_SMILE     = 0x0a0a0a; // smile curve
+  const C_NOSE      = 0x0a0a0a; // small nose mark
+
+  const root = new THREE.Group();
+  const rig  = new THREE.Group();
+  root.add(rig);
+
+  // ── LEGS — front at +X, rear at −X ───────────────────────────────────
+  const legs = [];
+  for (const [lx, phase] of [[1, 0], [-1, Math.PI]]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(lx * 0.09, 0.28, 0);
+    rig.add(pivot);
+
+    // Slim dark jeans — long thin legs
+    pivot.add(meshP(CYL,    C_JEANS, [0, -0.20, 0],   [0.075, 0.38, 0.075])); // thigh
+    pivot.add(meshP(SPHERE, C_JEANS, [0, -0.38, 0],   [0.072, 0.072, 0.072])); // knee
+    pivot.add(meshP(CYL,    C_JEANS, [0, -0.55, 0],   [0.065, 0.32, 0.065])); // shin
+    // White sneaker — toe cap along +X (walk direction)
+    pivot.add(meshP(SPHERE, C_SHOE_W,   [0,     -0.72, 0],    [0.082, 0.082, 0.082])); // ankle
+    pivot.add(meshP(SPHERE, C_SHOE_W,   [0.10,  -0.74, 0],    [0.22,  0.060, 0.082])); // toe body
+    pivot.add(meshP(SPHERE, C_SHOE_TOE, [0.185, -0.72, 0],    [0.072, 0.040, 0.078])); // toe cap
+    pivot.add(meshP(SPHERE, C_SHOE_D,   [0.08,  -0.78, 0],    [0.21,  0.018, 0.085])); // sole
+    // Lace accent dots
+    pivot.add(meshP(SPHERE, C_SHOE_D,   [0.06, -0.70,  0.048],[0.016, 0.010, 0.010]));
+    pivot.add(meshP(SPHERE, C_SHOE_D,   [0.06, -0.70, -0.048],[0.016, 0.010, 0.010]));
+
+    legs.push({ pivot, phase });
+  }
+
+  // ── TORSO — yellow/orange hoodie ─────────────────────────────────────
+  const body = new THREE.Group();
+  body.position.set(0, 0.60, 0);
+  rig.add(body);
+
+  // Main hoodie body — rounded, slightly wide
+  body.add(meshP(SPHERE, C_HOODIE,   [0,  0.05, 0.00],  [0.32, 0.48, 0.24])); // torso
+  body.add(meshP(SPHERE, C_HOODIE,   [0,  0.22, 0.00],  [0.34, 0.18, 0.26])); // chest/shoulder area
+  body.add(meshP(SPHERE, C_HOODIE_D, [0, -0.16, 0.00],  [0.28, 0.18, 0.22])); // lower hoodie / hem
+  // Front kangaroo pocket
+  body.add(meshP(SPHERE, C_HOODIE_D, [0, -0.06, 0.20],  [0.18, 0.12, 0.06]));
+  // Hood (folded down at back — visible as a bulge behind neck)
+  body.add(meshP(SPHERE, C_HOODIE,   [0,  0.38,-0.10],  [0.22, 0.14, 0.16]));
+
+  // ── BACKPACK — on rear face (−Z of body in local space) ──────────────
+  const pack = new THREE.Group();
+  pack.position.set(0, 0.08, -0.18);
+  body.add(pack);
+  pack.add(meshP(SPHERE, C_PACK,     [0,  0.00, 0],     [0.20, 0.30, 0.14])); // main body
+  pack.add(meshP(SPHERE, C_PACK,     [0,  0.18, 0],     [0.16, 0.10, 0.10])); // top pouch
+  // Shoulder straps (visible as strips on front at +Z)
+  for (const sz of [-1, 1]) {
+    pack.add(meshP(SPHERE, C_PACK_STR, [0, 0.06, sz * 0.08], [0.030, 0.32, 0.020]));
+  }
+
+  // ── ARMS — front at +X, rear at −X ───────────────────────────────────
+  const arms = [];
+  for (const [lx, phase] of [[1, 0], [-1, Math.PI]]) {
+    const shoulder = new THREE.Group();
+    shoulder.position.set(lx * 0.30, 0.25, 0);
+    body.add(shoulder);
+    shoulder.add(meshP(SPHERE, C_HOODIE, [0, 0, 0], [0.095, 0.095, 0.095]));
+
+    const upper = new THREE.Group();
+    shoulder.add(upper);
+    upper.add(meshP(CYL,    C_HOODIE, [0, -0.13, 0], [0.080, 0.26, 0.080]));
+    upper.add(meshP(SPHERE, C_HOODIE, [0, -0.25, 0], [0.075, 0.075, 0.075])); // elbow
+
+    const elbow = new THREE.Group();
+    elbow.position.set(0, -0.25, 0);
+    upper.add(elbow);
+
+    const forearm = new THREE.Group();
+    forearm.rotation.x = 0.10; // very slight natural bend
+    elbow.add(forearm);
+    forearm.add(meshP(CYL,    C_HOODIE, [0, -0.10, 0], [0.068, 0.20, 0.068]));
+
+    const hand = new THREE.Group();
+    hand.position.set(0, -0.20, 0);
+    forearm.add(hand);
+    hand.add(meshP(SPHERE, C_SKIN, [0, -0.02, 0.02], [0.072, 0.048, 0.085])); // palm
+    for (let f = -1; f <= 1; f++) {
+      hand.add(meshP(SPHERE, C_SKIN, [0, -0.06, f * 0.024 + 0.02], [0.022, 0.042, 0.020]));
+    }
+
+    arms.push({ upper, forearm, phase });
+  }
+
+  // ── NECK ─────────────────────────────────────────────────────────────
+  const neck = new THREE.Group();
+  neck.position.set(0, 0.44, 0.04);
+  body.add(neck);
+  neck.add(meshP(CYL,    C_SKIN,   [0, 0.07, 0],  [0.082, 0.12, 0.082]));
+  neck.add(meshP(SPHERE, C_HOODIE, [0, 0.00, 0],  [0.110, 0.065, 0.100])); // collar
+
+  // ── HEAD — the huge round smiley-face head ────────────────────────────
+  // This is the character's defining feature: enormous round cream circle.
+  // Skull Z-scale = 0.40 so front face surface is at z ≈ 0.40.
+  // All face features sit at z ≈ 0.38–0.44 (clearly protruding).
+  const head = new THREE.Group();
+  head.position.set(0, 0.52, 0.04);
+  body.add(head);
+
+  // Huge round skull — the smiley emoji circle
+  head.add(meshP(SPHERE, C_SKIN, [0,  0.12, 0.00], [0.36, 0.40, 0.40])); // main sphere
+
+  // Short dark hair on top — like a small cap
+  head.add(meshP(SPHERE, C_HAIR, [0,  0.38,  0.04], [0.30, 0.12, 0.30])); // top hair
+  head.add(meshP(SPHERE, C_HAIR, [0,  0.40,  0.10], [0.20, 0.10, 0.18])); // front fringe dip
+  head.add(meshP(SPHERE, C_HAIR, [0,  0.36, -0.08], [0.28, 0.08, 0.26])); // back hair line
+
+  // ── EARS — on ±X extremes (left/right for front-facing character) ─────
+  for (const sx of [-1, 1]) {
+    const ear = new THREE.Group();
+    ear.position.set(sx * 0.33, 0.12, 0.04);
+    head.add(ear);
+    ear.add(meshP(SPHERE, C_SKIN,   [0, 0, 0],          [0.030, 0.072, 0.048])); // outer
+    ear.add(meshP(SPHERE, C_SKIN,   [sx * 0.014, 0, 0], [0.018, 0.048, 0.030])); // inner bowl
+  }
+
+  // ── FACE — large +Z surface, front-facing: left/right on X axis ───────
+  // Skull Z-scale = 0.40, so face surface at z ≈ 0.38–0.44.
+  // Eyes separated along X; nose and mouth centred at X=0.
+
+  // Eyebrows — friendly thick arches above each eye
+  const brows = [];
+  for (const sx of [-1, 1]) {
+    const brow = new THREE.Group();
+    brow.position.set(sx * 0.12, 0.24, 0.36);
+    head.add(brow);
+    brow.add(meshP(SPHERE, C_HAIR, [0, 0, 0], [0.080, 0.022, 0.060])); // main bar
+    brow.add(meshP(SPHERE, C_HAIR, [sx * 0.032, 0.008, 0.020], [0.036, 0.016, 0.028])); // arch end
+    brows.push(brow);
+  }
+
+  // Eyes — large Pixar-style dot eyes, separated along X
+  for (const sx of [-1, 1]) {
+    const ex = sx * 0.12; // left/right offset
+    head.add(meshP(SPHERE, 0x1a1a2e, [ex, 0.14, 0.358], [0.048, 0.050, 0.036])); // dark socket
+    head.add(meshP(SPHERE, 0xffffff, [ex, 0.14, 0.378], [0.042, 0.044, 0.040])); // white sclera
+    head.add(meshP(SPHERE, C_EYE,    [ex, 0.14, 0.398], [0.028, 0.030, 0.026])); // iris/pupil dot
+    head.add(meshP(SPHERE, 0xffffff, [ex + sx * 0.010, 0.156, 0.408], [0.010, 0.010, 0.008])); // sparkle
+  }
+
+  // Nose — small round button nose, centred
+  head.add(meshP(SPHERE, C_NOSE,  [0,  0.06, 0.40], [0.026, 0.036, 0.022])); // nose ball
+  head.add(meshP(SPHERE, C_NOSE,  [0,  0.04, 0.41], [0.034, 0.016, 0.018])); // base
+  // Nostrils — ±X
+  head.add(meshP(SPHERE, C_NOSE,  [-0.018, 0.038, 0.408], [0.010, 0.010, 0.014])); // L nostril
+  head.add(meshP(SPHERE, C_NOSE,  [ 0.018, 0.038, 0.408], [0.010, 0.010, 0.014])); // R nostril
+
+  // Smile — wide curved arc using 5 spheres
+  // Front-facing: arc spans ±X, protrudes in Z
+  const mouthGroup = new THREE.Group();
+  mouthGroup.position.set(0, -0.04, 0.38);
+  head.add(mouthGroup);
+  // Wide smile: 5 beads in a U-shape spanning X axis
+  const smileX = [-0.12, -0.065, 0, 0.065, 0.12];
+  const smileY = [ 0.018,  0.004, -0.010, 0.004,  0.018]; // U-curve
+  for (let i = 0; i < smileX.length; i++) {
+    mouthGroup.add(meshP(SPHERE, C_SMILE,
+      [smileX[i], smileY[i], 0.02],
+      [0.022, 0.022, 0.018]));
+  }
+
+  // ── SCALE ─────────────────────────────────────────────────────────────
+  const box3 = new THREE.Box3().setFromObject(root);
+  root.scale.setScalar(cfg.height / (box3.max.y - box3.min.y));
+
+  // ── ANIMATION ─────────────────────────────────────────────────────────
+  let t = 0; let anim = 'idle'; let hop = 0;
+
+  return {
+    object: root,
+    frontFacing: true,
+    play(name) { anim = name; },
+    poke()     { hop = 0.45; },
+    update(dt) {
+      t += dt;
+      const walking = anim === 'walk';
+      const talking = anim === 'talk';
+      const k = Math.min(1, dt * 10);
+      const freq = 7.5;
+
+      // Legs — confident stride
+      for (const leg of legs) {
+        const target = walking ? Math.sin(t * freq + leg.phase) * 0.50 : 0;
+        leg.pivot.rotation.x += (target - leg.pivot.rotation.x) * k;
+      }
+
+      // Arms — natural opposing swing
+      for (const arm of arms) {
+        const s = Math.sin(t * freq + arm.phase);
+        const target = walking ? s * 0.44 : Math.sin(t * 1.1 + arm.phase * 0.3) * 0.04;
+        arm.upper.rotation.x += (target - arm.upper.rotation.x) * k;
+      }
+
+      // Body bounce — springy Pixar walk
+      let yOff = walking
+        ? Math.abs(Math.sin(t * freq)) * 0.040
+        : Math.sin(t * 1.4) * 0.010;
+      if (hop > 0) { hop -= dt; yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.36; }
+      rig.position.y = yOff;
+      body.rotation.z = Math.sin(t * freq * 0.5) * (walking ? 0.030 : 0.008);
+
+      // Head — oversized head bobs pleasantly
+      if (talking) {
+        head.rotation.x = Math.sin(t * 10) * 0.10;
+        head.rotation.z = Math.sin(t * 6.5) * 0.07;
+        // Animate smile: mouth group scales up slightly
+        mouthGroup.scale.set(1 + Math.abs(Math.sin(t * 10)) * 0.15, 1, 1);
+      } else if (walking) {
+        head.rotation.x = Math.sin(t * freq) * 0.055;
+        head.rotation.z = 0;
+        mouthGroup.scale.set(1, 1, 1);
+      } else {
+        // Idle: gentle sway, happy head tilt
+        head.rotation.x = Math.sin(t * 0.7) * 0.030;
+        head.rotation.z = Math.sin(t * 0.5) * 0.040;
+        mouthGroup.scale.set(1, 1, 1);
+      }
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
 // GLB loader
 // ---------------------------------------------------------------------------
 async function buildGLB(cfg) {
@@ -1287,11 +1545,14 @@ async function buildGLB(cfg) {
 // ---------------------------------------------------------------------------
 class Character {
   constructor(impl) {
-    this.impl   = impl;
-    this.object = impl.object;
-    this.facing = 1;
-    this.anim   = null;
-    this.object.rotation.y = YAW;
+    this.impl        = impl;
+    this.object      = impl.object;
+    this.facing      = 1;
+    this.anim        = null;
+    // frontFacing characters look straight at the camera (rotation.y = 0).
+    // All other characters use the YAW side-profile angle.
+    this.frontFacing = !!impl.frontFacing;
+    this.object.rotation.y = this.frontFacing ? 0 : YAW;
   }
   get x()    { return this.object.position.x; }
   set x(v)   { this.object.position.x = v; }
@@ -1299,7 +1560,13 @@ class Character {
   face(dir)  { this.facing = dir >= 0 ? 1 : -1; }
   poke()     { if (this.impl.poke) this.impl.poke(); }
   update(dt) {
-    const target = this.facing > 0 ? YAW : -YAW;
+    let target;
+    if (this.frontFacing) {
+      // Face camera when walking right, face away (Math.PI) when walking left
+      target = this.facing > 0 ? 0 : Math.PI;
+    } else {
+      target = this.facing > 0 ? YAW : -YAW;
+    }
     this.object.rotation.y += (target - this.object.rotation.y) * Math.min(1, dt * 10);
     this.impl.update(dt);
   }
@@ -1320,6 +1587,7 @@ export async function createCharacter(cfg) {
     else if (cfg.kind === 'pythonSnake') impl = buildPythonSnake(cfg);
     else if (cfg.kind === 'monkey')      impl = buildMonkey(cfg);
     else if (cfg.kind === 'mrBean')      impl = buildMrBean(cfg);
+    else if (cfg.kind === 'hoodieKid')   impl = buildHoodieKid(cfg);
     else                                 impl = buildAnimal(cfg);
   }
   return new Character(impl);
