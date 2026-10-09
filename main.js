@@ -16,6 +16,7 @@ const CHARACTERS = [
   { id: 'coffeeCup',   label: 'Coffee Cup ☕'           },
   { id: 'pythonSnake', label: 'Python Snake 🐍'         },
   { id: 'monkey',      label: 'Monkey 🐒'               },
+  { id: 'mrBean',      label: 'Mr. Bean 🧸'             },
 ];
 let activeCharacter = 'roboDog';
 

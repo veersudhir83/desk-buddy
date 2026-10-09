@@ -23,6 +23,7 @@ export const CONFIG = {
   coffeeCup:   { kind: 'coffeeCup',   height: 150, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
   pythonSnake: { kind: 'pythonSnake', height: 140, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
   monkey:      { kind: 'monkey',      height: 200, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
+  mrBean:      { kind: 'mrBean',      height: 220, model: null, clips: { idle: 'Idle', walk: 'Walk', talk: 'Talk' } },
 
   // Which character is active — persisted via userData/state.json (written by tray menu).
   activeCharacter: 'roboDog'
