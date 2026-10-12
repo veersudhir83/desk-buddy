@@ -40,16 +40,29 @@ npm test
 
 ## Characters
 
-All characters are fully animated — smooth walk cycles, idle breathing, talking nods, and a
-satisfying hop when you click on them. Switch via the tray **Character** submenu.
+The tray **Character** submenu offers seven characters; the cat appears automatically when
+Mouse is selected. All procedural characters have walk, idle, talk, and click-to-hop animations.
 
-| Character | Description | Style |
-|---|---|---|
-| 🐭 **Mouse** | Classic cartoon mouse — runs with the cat chasing behind | Tom & Jerry — `MeshLambertMaterial` |
-| 🐱 **Cat** | Chases the mouse; shown automatically alongside it | Tom & Jerry — `MeshLambertMaterial` |
-| 🤖 **Robo Dog** | Rounded robot dog with glowing blue mono-eye, wagging segmented tail, bouncy walk | Cartoon metallic — `MeshPhongMaterial` |
-| 🐧 **Penguin** | Tuxedo-coloured penguin with round belly, waddling walk, flapping flippers | Cute & round — `MeshLambertMaterial` |
-| 👨‍🚀 **Astronaut** | Puffy-suited astronaut with glowing visor, bouncy moon-gravity walk | Space sci-fi — `MeshPhongMaterial` |
+| Character | Description |
+|---|---|
+| 🐭 **Mouse** | Warm brown mouse with round ears, whiskers, blinking eyes, and a curved pink tail; runs with the cat chasing behind |
+| 🐱 **Cat** (chaser) | Blue-grey cat with cream muzzle, whiskers, blinking eyes, and a curved tail |
+| 🤖 **Robo Dog** | Rounded pearl-white robot dog with blue mono-eye, articulated legs, and a wagging segmented tail |
+| ☕ **Coffee Cup** | Ceramic mug with blinking eyes, a curved smile, translucent steam, and a bouncy walk |
+| 🐍 **Python Snake** | Segmented green snake with glasses, beret, tongue flick, and a rippling body |
+| 🐒 **Monkey** | Rounded cartoon monkey with expressive features and animated limbs and tail |
+| 🧸 **Mr. Bean** | Cartoon figure with expressive brows, suit, tie, and teddy bear |
+| 🧒 **Hoodie Kid** | Blue hoodie, backpack, white sneakers, blinking eyes, warm button nose, and a continuous curved smile |
+
+Characters use softer Phong shading, with a satin sheen on polished surfaces. Procedural models
+are aligned to the desktop baseline. Camera-facing characters make a small turn while walking
+and face the viewer when resting or talking; they keep their faces visible in both travel directions.
+Movement uses smooth facing transitions, and hop animations settle without overshooting.
+
+To preview the changes, run `npm run demo`, switch characters through the tray menu, and click
+characters to try their hop. The latest update passed all 11 scheduler tests and construction,
+height, grounding, and animation checks for all eight procedural characters. In-app visual review
+is still pending.
 
 > **Tip:** To add your own `.glb` character, drop the file in `assets/models/` and set the `model`
 > path and clip names in `renderer/config.js`. The app falls back to the procedural version
@@ -130,7 +143,7 @@ src/scheduler.js     Due-time logic, snooze, persisted state
 renderer/
   index.html         Overlay page
   main.js            Three.js scene + state machine + character orchestration
-  characters.js      Procedural characters (mouse, cat, roboDog, penguin, astronaut) + GLB loader
+  characters.js      Eight procedural characters + GLB loader
   config.js          All tunables and character configs
 defaults/
   reminders.json     Seed reminders copied to userData on first run

@@ -11,6 +11,7 @@ Desk Buddy is a lightweight Windows (and macOS-compatible) desktop companion app
 5. Auto-snooze after 2 minutes of no interaction; manual snooze = 10 minutes
 6. Screen-share / meeting detection: auto-pause reminders when user is in an active call
 7. Procedural 3-D characters (no external model files required); GLB swap-in supported
+8. Seven tray-selectable characters plus the automatic cat chaser; expressive faces, smooth animation, and consistent desktop grounding
 
 ## Goals
 - Zero-friction: runs silently in the tray, reminds without being annoying

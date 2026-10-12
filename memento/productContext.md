@@ -13,14 +13,15 @@ Knowledge workers forget to hydrate, stretch, take breaks, and attend stand-ups.
 
 ## How it works (user perspective)
 1. App starts silently, sits in the system tray
-2. At the right time, the RoboDog (or mouse) walks in from the left, stops, and shows a speech bubble
+2. At the right time, the selected character (RoboDog by default) walks in from the left, stops, and shows a speech bubble
 3. User reads the reminder, clicks **Done** (or **Snooze**); character exits right
 4. If ignored for 2 min → auto-snooze 10 min
 5. During a Teams/Zoom/Webex call → reminders are automatically held
 
 ## User experience goals
 - First launch: works immediately with sensible default reminders
-- Character should feel alive: smooth walk, wagging tail, head nods, idle breathing
+- Character should feel alive: smooth walk, wagging tail, head nods, idle breathing, and blinking where supported
+- Expressions remain visible during turns; characters rest on the desktop baseline with soft, readable shading
 - Speech bubble is clearly readable, positioned above the character's head
 - Clicking the character is satisfying (poke → hop animation)
 - Tray menu is the only UI surface needed for 95% of use

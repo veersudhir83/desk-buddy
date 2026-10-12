@@ -30,23 +30,28 @@ preload.js (contextBridge)
 renderer/ (Chromium renderer process)
   ├── index.html
   ├── main.js — Three.js scene, state machine, character management
-  ├── characters.js — procedural buildAnimal(), buildRoboDog(), GLB loader, Character wrapper
+  ├── characters.js — eight procedural characters, curve/eye helpers, GLB loader, Character wrapper
   └── config.js — all tunables (speed, heights, character configs, activeCharacter)
 ```
 
 ## Rendering
 - **Camera**: `OrthographicCamera` in pixel units, origin bottom-left of work area
 - **Lighting**: HemisphereLight (1.7) + DirectionalLight sun (1.8) from top-left
-- **Materials**: `MeshLambertMaterial` (animals) / `MeshPhongMaterial` with specular (RoboDog)
+- **Materials**: `MeshPhongMaterial` throughout procedural models: soft surfaces use shininess 18, polished surfaces use 48; restrained specular highlights
 - **FPS cap**: 30 fps (configurable via `CONFIG.fpsCap`)
 - **Pixel ratio**: `window.devicePixelRatio` (HiDPI aware)
 
 ## Character System
 - Characters are **procedural** by default (no external files needed)
 - `createCharacter(cfg)` factory: tries GLB first, falls back to procedural
-- Available characters: `mouse`, `cat` (chaser), `roboDog`
+- Seven selectable characters: `mouse`, `roboDog`, `coffeeCup`, `pythonSnake`, `monkey`, `mrBean`, `hoodieKid`; `cat` is the automatic mouse chaser
 - Active character persisted in `userData/state.json`
-- `YAW = Math.PI/2 - 0.45` — 3/4 side view applied to all characters
+- Non-front-facing characters use signed `YAW = Math.PI/2 - 0.45`; camera-facing characters walk at facing * 0.28 radians and idle/talk at yaw 0
+- Procedural factory adds an outer grounding group after height normalization; GLB keeps its own normalization
+- Shared tube-curve helper builds continuous smiles, tails, whiskers, and translucent steam
+- Tagged eye groups blink on cat, mouse, coffee cup, and hoodie kid
+- Wrapper clamps dt to 0-0.05 seconds and exponentially smooths facing; hop timers clamp at zero
+- Validation (2026-10-12): syntax, 11 scheduler tests, and one-off checks for eight procedural models passed; in-app visual review pending
 
 ## Scheduler (`src/scheduler.js`)
 - Reads `reminders.json` from `app.getPath('userData')` (seeded from `defaults/reminders.json`)

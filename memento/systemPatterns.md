@@ -57,27 +57,32 @@ flowchart TD
     GLBLoader
     buildRoboDog
     buildAnimal
+    OtherProceduralBuilders
     CharacterWrapper
 
     createCharacter --> GLBLoader
     createCharacter --> buildRoboDog
     createCharacter --> buildAnimal
+    createCharacter --> OtherProceduralBuilders
     GLBLoader --> CharacterWrapper
     buildRoboDog --> CharacterWrapper
     buildAnimal --> CharacterWrapper
+    OtherProceduralBuilders --> CharacterWrapper
 ```
 
 Each character implementation exposes:
 ```js
 { object: THREE.Group, play(name), poke(), update(dt) }
 ```
-The `Character` wrapper adds: `.x` (position), `.face(dir)`, YAW rotation, smooth facing transition.
+`poke()` is optional (the GLB implementation omits it). Implementations may set `frontFacing: true`.
+
+The `Character` wrapper adds `.x`, `.face(dir)`, smooth facing transitions, a clamped animation delta, and blinking for explicitly tagged eye groups. Camera-facing characters turn slightly during walking and face the viewer for idle/talk; others use the signed side-view YAW. The factory grounds procedural models with an outer group after height normalization, preserving inner rig pivots and animations.
 
 ## Procedural Character Geometry (RoboDog)
 - All meshes use `MeshPhongMaterial` (shininess + specular) for cartoon-metallic look
 - Shape language: **spheres and cylinders only** — no flat boxes
 - Hierarchy: `root → rig → body → [head, neck, legs×4, tail, shoulder bulges]`
-- Head faces along body's `+Z` axis; `YAW ≈ π/2` makes `+Z` point at camera
+- Head features lie on the body's `+Z` axis; signed `YAW` presents a three-quarter side view
 - Animation driven by `update(dt)` with sinusoidal time-based curves — no keyframes
 
 ## Scheduler Pattern
@@ -98,7 +103,9 @@ The `Character` wrapper adds: `.x` (position), `.face(dir)`, YAW rotation, smoot
 |---|---|
 | OrthographicCamera in pixel units | Characters positioned in CSS pixels, no perspective distortion |
 | Procedural geometry (no GLB required) | Zero external assets needed; GLB swap-in when ready |
-| `MeshPhongMaterial` for RoboDog | Metallic sheen without full PBR cost |
+| `MeshPhongMaterial` for procedural characters | Soft or satin shading without full PBR cost |
+| Tagged eye groups and shared curve helper | Reusable blinking and continuous facial/organic details |
+| Outer procedural grounding group | Align soles to the desktop while preserving animation pivots |
 | Single tray as only UI | Minimal surface area; no main window to manage |
 | `node:test` for scheduler | Zero extra dependencies for unit tests |
 | ESM throughout | Future-proof; Electron 44 supports it natively |
