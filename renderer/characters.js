@@ -5,10 +5,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const YAW = Math.PI / 2 - 0.45;
 
 function mat(color, opts = {}) {
-  return new THREE.MeshLambertMaterial({ color, ...opts });
+  return new THREE.MeshPhongMaterial({ color, shininess: 18, specular: 0x29252b, ...opts });
 }
 function matPhong(color, opts = {}) {
-  return new THREE.MeshPhongMaterial({ color, shininess: 120, specular: 0x88aacc, ...opts });
+  return new THREE.MeshPhongMaterial({ color, shininess: 48, specular: 0x555968, ...opts });
 }
 function mesh(geo, color, pos = [0, 0, 0], scl = [1, 1, 1], rot = [0, 0, 0], phong = false) {
   const m = new THREE.Mesh(geo, phong ? matPhong(color) : mat(color));
@@ -28,16 +28,30 @@ const CYL      = new THREE.CylinderGeometry(1, 1, 1, 24);
 const BOX      = new THREE.BoxGeometry(1, 1, 1);
 const TORUS    = new THREE.TorusGeometry(1, 0.3, 16, 32);
 
+// Continuous curves read more clearly than separate beads at desktop sizes.
+function curveMesh(points, color, radius = 0.012) {
+  const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)));
+  return mesh(new THREE.TubeGeometry(curve, 24, radius, 8, false), color);
+}
+
+function eyeGroup(parent, position) {
+  const eye = new THREE.Group();
+  eye.position.set(...position);
+  eye.userData.blink = true;
+  parent.add(eye);
+  return eye;
+}
+
 // ---------------------------------------------------------------------------
 // Animal procedural builder (cat / mouse)
 // ---------------------------------------------------------------------------
 const PALETTES = {
   cat: {
-    body: 0x7a8fb5, belly: 0xf1f1f1, inner: 0xf2b5c4, nose: 0xd9576b,
+    body: 0x8096ba, belly: 0xfff4e6, inner: 0xefb3ba, nose: 0xb65c75,
     earRound: false, tailLen: 0.9, tailR: 0.05, muzzle: [0.17, 0.13, 0.15], muzzleZ: 0.26
   },
   mouse: {
-    body: 0xa8744a, belly: 0xf0d9bd, inner: 0xe9a7b4, nose: 0xd9576b,
+    body: 0xb98b68, belly: 0xffe6cb, inner: 0xe9a7b4, nose: 0xb65c75,
     earRound: true, tailLen: 1.5, tailR: 0.03, muzzle: [0.13, 0.12, 0.24], muzzleZ: 0.28
   }
 };
@@ -49,6 +63,7 @@ function buildAnimal(cfg) {
   root.add(rig);
 
   rig.add(mesh(SPHERE, p.body, [0, 0.75, 0], [0.34, 0.32, 0.55]));
+  rig.add(mesh(SPHERE, p.belly, [0, 0.64, 0.29], [0.27, 0.22, 0.30]));
 
   const head = new THREE.Group();
   head.position.set(0, 1.05, 0.62);
@@ -56,8 +71,20 @@ function buildAnimal(cfg) {
   head.add(mesh(SPHERE, p.belly, [0, -0.07, p.muzzleZ], p.muzzle));
   head.add(mesh(SPHERE, p.nose,  [0, -0.02, p.muzzleZ + p.muzzle[2] - 0.02], [0.05, 0.04, 0.04]));
   for (const sx of [-1, 1]) {
-    head.add(mesh(SPHERE, 0xffffff, [sx * 0.13, 0.08,  0.25],  [0.085, 0.095, 0.05]));
-    head.add(mesh(SPHERE, 0x111111, [sx * 0.13, 0.08,  0.295], [0.04,  0.05,  0.03]));
+    const eye = eyeGroup(head, [sx * 0.13, 0.08, 0.25]);
+    eye.add(mesh(SPHERE, 0xfffcf6, [0, 0, 0], [0.09, 0.10, 0.055]));
+    eye.add(meshP(SPHERE, cfg.kind === 'mouse' ? 0x553b30 : 0x397c78,
+      [0, 0, 0.048], [0.052, 0.062, 0.025]));
+    eye.add(mesh(SPHERE, 0x182331, [0, 0, 0.066], [0.03, 0.044, 0.018]));
+    eye.add(mesh(SPHERE, 0xffffff, [-0.014, 0.023, 0.079], [0.014, 0.017, 0.009]));
+    head.add(mesh(SPHERE, p.inner, [sx * 0.22, -0.055, 0.235], [0.055, 0.026, 0.024]));
+    for (const offset of [-1, 1]) {
+      head.add(curveMesh([
+        [sx * 0.12, -0.09, p.muzzleZ + 0.08],
+        [sx * 0.27, -0.09 + offset * 0.025, p.muzzleZ + 0.09],
+        [sx * 0.40, -0.09 + offset * 0.055, p.muzzleZ + 0.07]
+      ], 0x64566a, 0.006));
+    }
     if (p.earRound) {
       head.add(mesh(SPHERE, p.body,  [sx * 0.27, 0.27, -0.02], [0.2,  0.2,  0.05]));
       head.add(mesh(SPHERE, p.inner, [sx * 0.27, 0.27,  0.02], [0.14, 0.14, 0.03]));
@@ -86,8 +113,9 @@ function buildAnimal(cfg) {
   tail.position.set(0, 0.8, -0.5);
   tail.rotation.x = -1.05;
   const tailL = p.tailLen * 0.7;
-  tail.add(mesh(CYL,    p.body, [0, tailL / 2, 0], [p.tailR, tailL, p.tailR]));
-  tail.add(mesh(SPHERE, p.body, [0, tailL, 0],      [p.tailR * 1.3, p.tailR * 1.3, p.tailR * 1.3]));
+  tail.add(curveMesh([[0, 0, 0], [0, tailL * 0.45, 0.04],
+    [0, tailL * 0.85, 0.14], [0, tailL, 0.28]],
+    p.earRound ? p.inner : p.body, p.tailR));
   rig.add(tail);
 
   const box = new THREE.Box3().setFromObject(root);
@@ -101,13 +129,13 @@ function buildAnimal(cfg) {
     update(dt) {
       t += dt;
       const walking = anim === 'walk';
-      const k = Math.min(1, dt * 12);
+      const k = 1 - Math.exp(-dt * 12);
       for (const l of legs) {
         const target = walking ? Math.sin(t * 10 + l.phase) * 0.7 : 0;
-        l.pivot.rotation.x = walking ? target : l.pivot.rotation.x + (target - l.pivot.rotation.x) * k;
+        l.pivot.rotation.x += (target - l.pivot.rotation.x) * k;
       }
       let y = walking ? Math.abs(Math.sin(t * 10)) * 0.05 : Math.sin(t * 2) * 0.01;
-      if (hop > 0) { hop -= dt; y += Math.sin((1 - hop / 0.45) * Math.PI) * 0.35; }
+      if (hop > 0) { hop = Math.max(0, hop - dt); y += Math.sin((1 - hop / 0.45) * Math.PI) * 0.35; }
       rig.position.y = y;
       head.rotation.x = anim === 'talk' ? Math.sin(t * 14) * 0.14 : 0;
       tail.rotation.z = Math.sin(t * (walking ? 6 : 2.5)) * 0.4;
@@ -334,7 +362,7 @@ function buildRoboDog(cfg) {
       t += dt;
       const walking = anim === 'walk';
       const talking = anim === 'talk';
-      const k = Math.min(1, dt * 10);
+      const k = 1 - Math.exp(-dt * 10);
       const freq = 8.5; // walk cycle frequency
 
       // ── Leg swing — diagonal gait (like a real trotting dog) ─────────────
@@ -372,7 +400,7 @@ function buildRoboDog(cfg) {
         body.rotation.z = 0;
       }
       if (hop > 0) {
-        hop -= dt;
+        hop = Math.max(0, hop - dt);
         yOff += Math.sin((1 - hop / 0.50) * Math.PI) * 0.38;
       }
       rig.position.y = yOff;
@@ -462,11 +490,14 @@ function buildCoffeeCup(cfg) {
 
   // ── FACE — eyes and mouth on the +Z face (toward viewer) ──────
   // +Z face: z ≈ +0.38 radius of cylinder
-  body.add(meshP(SPHERE, C_EYES,  [-0.10, 0.08, 0.38], [0.040, 0.040, 0.028])); // left eye
-  body.add(meshP(SPHERE, C_EYES,  [ 0.10, 0.08, 0.38], [0.040, 0.040, 0.028])); // right eye
-  body.add(meshP(SPHERE, C_MOUTH, [ 0.00, -0.04, 0.39], [0.060, 0.026, 0.020])); // mouth mid
-  body.add(meshP(SPHERE, C_MOUTH, [-0.07, -0.01, 0.38], [0.026, 0.022, 0.018])); // mouth corner L
-  body.add(meshP(SPHERE, C_MOUTH, [ 0.07, -0.01, 0.38], [0.026, 0.022, 0.018])); // mouth corner R
+  for (const sx of [-1, 1]) {
+    const eye = eyeGroup(body, [sx * 0.10, 0.08, 0.375]);
+    eye.add(meshP(SPHERE, C_EYES, [0, 0, 0], [0.040, 0.052, 0.028]));
+    eye.add(mesh(SPHERE, 0xffffff, [-0.010, 0.017, 0.024], [0.010, 0.012, 0.006]));
+    body.add(mesh(SPHERE, 0xe5aaa0, [sx * 0.19, -0.012, 0.335], [0.048, 0.024, 0.014]));
+  }
+  body.add(curveMesh([[-0.07, -0.015, 0.385], [0, -0.055, 0.395],
+    [0.07, -0.015, 0.385]], C_MOUTH));
 
   // ── STEAM WISPS rising from top ──────────────────────────────
   const steam = [];
@@ -474,8 +505,12 @@ function buildCoffeeCup(cfg) {
     const wisp = new THREE.Group();
     wisp.position.set(sx, 0.36, sz);
     body.add(wisp);
-    wisp.add(meshP(SPHERE, C_STEAM, [0, 0.10, 0], [0.045, 0.12, 0.045]));
-    wisp.add(meshP(SPHERE, C_STEAM, [0, 0.22, 0], [0.030, 0.08, 0.030]));
+    const vapor = curveMesh([[0, 0, 0], [-0.025, 0.10, 0],
+      [0.025, 0.20, 0], [0, 0.29, 0]], C_STEAM, 0.016);
+    vapor.material.transparent = true;
+    vapor.material.opacity = 0.36;
+    vapor.material.depthWrite = false;
+    wisp.add(vapor);
     steam.push(wisp);
   }
 
@@ -519,7 +554,7 @@ function buildCoffeeCup(cfg) {
       let yOff = walking
         ? Math.abs(Math.sin(t * 10)) * 0.045
         : Math.sin(t * 1.8) * 0.012;
-      if (hop > 0) { hop -= dt; yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.35; }
+      if (hop > 0) { hop = Math.max(0, hop - dt); yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.35; }
       rig.position.y = yOff;
     }
   };
@@ -640,7 +675,7 @@ function buildPythonSnake(cfg) {
 
       // Bounce
       let yOff = walking ? Math.abs(Math.sin(t * freq)) * 0.025 : Math.sin(t * 1.4) * 0.012;
-      if (hop > 0) { hop -= dt; yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.30; }
+      if (hop > 0) { hop = Math.max(0, hop - dt); yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.30; }
       rig.position.y = yOff;
 
       // Head during talk: nod while still swaying
@@ -922,7 +957,7 @@ function buildMonkey(cfg) {
         ? Math.abs(Math.sin(t * freq)) * 0.08 // big dip each step
         : Math.sin(t * 1.8) * 0.014;
       if (hop > 0) {
-        hop -= dt;
+        hop = Math.max(0, hop - dt);
         yOff += Math.sin((1 - hop / 0.50) * Math.PI) * 0.42;
       }
       rig.position.y = yOff;
@@ -1190,7 +1225,7 @@ function buildMrBean(cfg) {
       t += dt;
       const walking = anim === 'walk';
       const talking = anim === 'talk';
-      const k = Math.min(1, dt * 10);
+      const k = 1 - Math.exp(-dt * 10);
       const freq = 7.0;
 
       // Legs — X rotation fore/aft swing
@@ -1215,7 +1250,7 @@ function buildMrBean(cfg) {
       let yOff = walking
         ? Math.abs(Math.sin(t * freq)) * 0.024
         : Math.sin(t * 1.5) * 0.007;
-      if (hop > 0) { hop -= dt; yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.30; }
+      if (hop > 0) { hop = Math.max(0, hop - dt); yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.30; }
       rig.position.y = yOff;
       body.rotation.z = Math.sin(t * freq * 0.5) * (walking ? 0.020 : 0.006);
 
@@ -1280,7 +1315,7 @@ function buildHoodieKid(cfg) {
   const C_PACK_STR  = 0x1a2530; // backpack straps
   const C_EYE       = 0x0a0a0a; // simple black dot eyes
   const C_SMILE     = 0x0a0a0a; // smile curve
-  const C_NOSE      = 0x0a0a0a; // small nose mark
+  const C_NOSE      = 0xe1ae88; // warm button nose
 
   const root = new THREE.Group();
   const rig  = new THREE.Group();
@@ -1417,10 +1452,12 @@ function buildHoodieKid(cfg) {
   // Eyes — large Pixar-style dot eyes, separated along X
   for (const sx of [-1, 1]) {
     const ex = sx * 0.12; // left/right offset
-    head.add(meshP(SPHERE, 0x1a1a2e, [ex, 0.14, 0.358], [0.048, 0.050, 0.036])); // dark socket
-    head.add(meshP(SPHERE, 0xffffff, [ex, 0.14, 0.378], [0.042, 0.044, 0.040])); // white sclera
-    head.add(meshP(SPHERE, C_EYE,    [ex, 0.14, 0.398], [0.028, 0.030, 0.026])); // iris/pupil dot
-    head.add(meshP(SPHERE, 0xffffff, [ex + sx * 0.010, 0.156, 0.408], [0.010, 0.010, 0.008])); // sparkle
+    const eye = eyeGroup(head, [ex, 0.14, 0.358]);
+    eye.add(mesh(SPHERE, 0x1a1a2e, [0, 0, 0], [0.048, 0.056, 0.036]));
+    eye.add(mesh(SPHERE, 0xfffcf6, [0, 0, 0.020], [0.042, 0.049, 0.040]));
+    eye.add(meshP(SPHERE, C_EYE, [0, 0, 0.040], [0.028, 0.035, 0.026]));
+    eye.add(mesh(SPHERE, 0xffffff, [-0.010, 0.016, 0.050], [0.010, 0.010, 0.008]));
+    head.add(mesh(SPHERE, 0xe9ac9b, [sx * 0.21, 0.035, 0.325], [0.045, 0.022, 0.014]));
   }
 
   // Nose — small round button nose, centred
@@ -1435,14 +1472,8 @@ function buildHoodieKid(cfg) {
   const mouthGroup = new THREE.Group();
   mouthGroup.position.set(0, -0.04, 0.38);
   head.add(mouthGroup);
-  // Wide smile: 5 beads in a U-shape spanning X axis
-  const smileX = [-0.12, -0.065, 0, 0.065, 0.12];
-  const smileY = [ 0.018,  0.004, -0.010, 0.004,  0.018]; // U-curve
-  for (let i = 0; i < smileX.length; i++) {
-    mouthGroup.add(meshP(SPHERE, C_SMILE,
-      [smileX[i], smileY[i], 0.02],
-      [0.022, 0.022, 0.018]));
-  }
+  mouthGroup.add(curveMesh([[-0.10, 0.018, 0.005], [-0.055, -0.008, 0.025],
+    [0, -0.018, 0.032], [0.055, -0.008, 0.025], [0.10, 0.018, 0.005]], C_SMILE, 0.009));
 
   // ── SCALE ─────────────────────────────────────────────────────────────
   const box3 = new THREE.Box3().setFromObject(root);
@@ -1460,7 +1491,7 @@ function buildHoodieKid(cfg) {
       t += dt;
       const walking = anim === 'walk';
       const talking = anim === 'talk';
-      const k = Math.min(1, dt * 10);
+      const k = 1 - Math.exp(-dt * 10);
       const freq = 7.5;
 
       // Legs — confident stride
@@ -1480,7 +1511,7 @@ function buildHoodieKid(cfg) {
       let yOff = walking
         ? Math.abs(Math.sin(t * freq)) * 0.040
         : Math.sin(t * 1.4) * 0.010;
-      if (hop > 0) { hop -= dt; yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.36; }
+      if (hop > 0) { hop = Math.max(0, hop - dt); yOff += Math.sin((1 - hop / 0.45) * Math.PI) * 0.36; }
       rig.position.y = yOff;
       body.rotation.z = Math.sin(t * freq * 0.5) * (walking ? 0.030 : 0.008);
 
@@ -1553,6 +1584,12 @@ class Character {
     // All other characters use the YAW side-profile angle.
     this.frontFacing = !!impl.frontFacing;
     this.object.rotation.y = this.frontFacing ? 0 : YAW;
+    this.blinkTime = 0;
+    this.nextBlink = 2.5 + Math.random() * 2;
+    this.eyes = [];
+    this.object.traverse((part) => {
+      if (part.userData.blink) this.eyes.push(part);
+    });
   }
   get x()    { return this.object.position.x; }
   set x(v)   { this.object.position.x = v; }
@@ -1560,15 +1597,23 @@ class Character {
   face(dir)  { this.facing = dir >= 0 ? 1 : -1; }
   poke()     { if (this.impl.poke) this.impl.poke(); }
   update(dt) {
+    // Avoid large pose jumps when the desktop animation resumes after a pause.
+    dt = Math.max(0, Math.min(dt, 0.05));
     let target;
     if (this.frontFacing) {
-      // Face camera when walking right, face away (Math.PI) when walking left
-      target = this.facing > 0 ? 0 : Math.PI;
+      // A small turn suggests travel while keeping the expression visible.
+      target = this.anim === 'walk' ? this.facing * 0.28 : 0;
     } else {
       target = this.facing > 0 ? YAW : -YAW;
     }
-    this.object.rotation.y += (target - this.object.rotation.y) * Math.min(1, dt * 10);
+    this.object.rotation.y += (target - this.object.rotation.y) * (1 - Math.exp(-dt * 10));
     this.impl.update(dt);
+    this.blinkTime += dt;
+    const elapsed = this.blinkTime - this.nextBlink;
+    const openness = elapsed >= 0 && elapsed < 0.18
+      ? 1 - Math.sin(elapsed / 0.18 * Math.PI) * 0.94 : 1;
+    for (const eye of this.eyes) eye.scale.y = openness;
+    if (elapsed >= 0.18) this.nextBlink = this.blinkTime + 2.8 + Math.random() * 2.5;
   }
 }
 
@@ -1589,6 +1634,13 @@ export async function createCharacter(cfg) {
     else if (cfg.kind === 'mrBean')      impl = buildMrBean(cfg);
     else if (cfg.kind === 'hoodieKid')   impl = buildHoodieKid(cfg);
     else                                 impl = buildAnimal(cfg);
+    // Several rigs extend below their origin; put their soles on the desktop.
+    const model = impl.object;
+    const bounds = new THREE.Box3().setFromObject(model);
+    const grounded = new THREE.Group();
+    model.position.y -= bounds.min.y;
+    grounded.add(model);
+    impl.object = grounded;
   }
   return new Character(impl);
 }
